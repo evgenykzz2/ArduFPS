@@ -1,15 +1,17 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
+#include <stdint.h>
+
 namespace ArduFPS
 {
 
 class Player
 {
 public:
-  int16_t x;
-  int16_t y;
-  int16_t angle;
+  static int16_t x;
+  static int16_t y;
+  static int16_t angle;
 };
 
 }
