@@ -39,5 +39,7 @@ void loop()
   ArduFPS::Game::Control();
   ArduFPS::Game::Draw();
 
+  arduboy.setCursor(0,0);
+  arduboy.print(arduboy.cpuLoad());
   arduboy.display(true);
 }

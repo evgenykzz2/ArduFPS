@@ -118,7 +118,7 @@ void Game::Draw()
   Render::Prepare();
   Render::RenderMap();
 
-  Sprites::drawPlusMask(64-12, 64-18, g_weapon_sprites, 0);
+  //Sprites::drawPlusMask(64-12, 64-18, g_weapon_sprites, 0);
 }
 
 }

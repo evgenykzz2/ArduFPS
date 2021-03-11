@@ -32,10 +32,7 @@ void RenderWallSegment(int16_t x1, int16_t w1, int16_t x2, int16_t w2)
 {
   if (x1 < 0)
   {
-    //u1 += ((int32_t)(0 - x1) * (int32_t)(u2 - u1)) / (x2 - x1);
     w1 += ((int32_t)(0 - x1) * (int32_t)(w2 - w1)) / (x2 - x1);
-    //r_u0 += ((0 - x1) * (r_u1 - r_u0)) / (x2 - x1);
-    //w1 += ((0 - x1) * (w2 - w1)) / (x2 - x1);
     x1 = 0;
   }
 
@@ -53,19 +50,6 @@ void RenderWallSegment(int16_t x1, int16_t w1, int16_t x2, int16_t w2)
     dw = w1 - w2;
     wstep = -1;
   }
-
-  //texture
-  /*uerror = werror;
-  u = r_u0;
-  if (r_u0 < r_u1)
-  {
-    du = r_u1 - r_u0;
-    ustep = 1;
-  } else
-  {
-    du = r_u0 - r_u1;
-    ustep = -1;
-  }*/
 
   for (int16_t x = x1; x < WIDTH; x++)
   {
@@ -208,11 +192,6 @@ void RenderWallSegment(int16_t x1, int16_t w1, int16_t x2, int16_t w2)
           }
         }
       }
-      
-      //g_wall_h[x] = w;
-      //g_txt_u[x] = u/w;
-      //g_txt_u[x] = u;
-      //g_line_done++;
     }
     werror -= dw;
     while (werror < 0)
@@ -220,12 +199,6 @@ void RenderWallSegment(int16_t x1, int16_t w1, int16_t x2, int16_t w2)
       w += wstep;
       werror += dx;
     }
-    /*uerror -= du;
-    while(uerror < 0)
-    {
-      u+=ustep;
-      uerror += dx;
-    }*/
   }
 }
 
@@ -274,7 +247,7 @@ void RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16_t x2, i
       break;
     if (Render::z_buffer[x] == 0)
     {
-      Render::z_buffer[x] = 1;
+      Render::z_buffer[x] = w > 255 ? 255 : (uint8_t) w;
       //arduboy.drawFastVLine(x, 32 - w/2, w);
 
       int16_t y0 = 32-w/2;
@@ -299,7 +272,7 @@ void RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16_t x2, i
         y0 = 0;
       }
 
-      if ( (uint8_t)(s_render_side & (CELL_SIDE_MASK_LEFT | CELL_SIDE_MASK_RIGHT)) != 0 && w > 10)
+      /*if ( (uint8_t)(s_render_side & (CELL_SIDE_MASK_LEFT | CELL_SIDE_MASK_RIGHT)) != 0 && w > 10)
       {
         for (int16_t y = y0; y <= y1; ++y)
         {
@@ -319,26 +292,104 @@ void RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16_t x2, i
             txt_pixel >>= 1;
           }
         }
-      } else
+      } else*/
       {
-        for (int16_t y = y0; y <= y1; ++y)
+        if (y1 >= HEIGHT-1)
+          y1 = HEIGHT-1;
+
+        uint8_t y_begin = 8-(y0 & 7);
+        if (y_begin != 0)
         {
-          if (y >= HEIGHT)
-            break;
-          if ( (uint8_t)(txt_pixel & 1) != 0 )
+          uint8_t bt = 1 << ((uint8_t)y0 & 7);
+          uint16_t row_offset = ((uint8_t)y0 & 0xF8) * WIDTH / 8 + (uint16_t)x;
+          uint8_t data = arduboy.sBuffer[row_offset];
+          for (uint8_t y = 0; y < y_begin; ++y)
           {
-            uint8_t bt = 1 << ((uint8_t)y & 7);
-            uint16_t row_offset = ((uint8_t)y & 0xF8) * WIDTH / 8 + (uint16_t)x;
-            arduboy.sBuffer[row_offset] |= bt;
+            if ( (uint8_t)(txt_pixel & 1) != 0 )
+              data |= bt;
+            bt <<= 1;
+            verror -= dv;
+            while (verror < 0)
+            {
+              v++;
+              verror += dy;
+              txt_pixel >>= 1;
+            }
           }
-          verror -= dv;
-          while (verror < 0)
+          y0 += y_begin;
+          arduboy.sBuffer[row_offset] = data;
+        }
+
+        uint8_t full_blocks = (y1-y0)/8;
+        for (uint8_t y = 0; y < full_blocks; ++y)
+        {
+          uint16_t row_offset = (uint16_t)y0 * WIDTH / 8 + (uint16_t)x;
+          uint8_t data = arduboy.sBuffer[row_offset];
+          uint8_t bt = 1;
+          for (uint8_t yi = 0; yi < 8; ++yi)
           {
-            v++;
-            verror += dy;
-            txt_pixel >>= 1;
+            if ( (uint8_t)(txt_pixel & 1) != 0 )
+              data |= bt;
+            bt <<= 1;
+            verror -= dv;
+            while (verror < 0)
+            {
+              v++;
+              verror += dy;
+              txt_pixel >>= 1;
+            }
           }
-        }        
+          arduboy.sBuffer[row_offset] = data;
+          y0 += 8;
+        }
+
+        uint8_t y_end = y1 & 7;
+        if (y_end != 0)
+        {
+          uint8_t bt = 1;
+          uint16_t row_offset = y0 * WIDTH / 8 + (uint16_t)x;
+          uint8_t data = arduboy.sBuffer[row_offset];
+          for (uint8_t y = 0; y < y_end; ++y)
+          {
+            if ( (uint8_t)(txt_pixel & 1) != 0 )
+              data |= bt;
+            bt <<= 1;
+            verror -= dv;
+            while (verror < 0)
+            {
+              v++;
+              verror += dy;
+              txt_pixel >>= 1;
+            }
+          }
+          y0 += y_end;
+          arduboy.sBuffer[row_offset] = data;
+        }
+ 
+        /*if (y0 == 0 && y1 >= HEIGHT-1)
+        {
+        } else
+        {
+          
+          for (int16_t y = y0; y <= y1; ++y)
+          {
+            if (y >= HEIGHT)
+              break;
+            if ( (uint8_t)(txt_pixel & 1) != 0 )
+            {
+              uint8_t bt = 1 << ((uint8_t)y & 7);
+              uint16_t row_offset = ((uint8_t)y & 0xF8) * WIDTH / 8 + (uint16_t)x;
+              arduboy.sBuffer[row_offset] |= bt;
+            }
+            verror -= dv;
+            while (verror < 0)
+            {
+              v++;
+              verror += dy;
+              txt_pixel >>= 1;
+            }
+          }
+        }*/        
       }
 
       /*while (y1 < 36)
@@ -408,11 +459,11 @@ void RenderWall(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
   int16_t x1_view, y1_view;
   World2Local(x1, y1, &x1_view, &y1_view);
 
-  //Cut wall - works not good
-  //if (x1_view < 0 && -2 * y1_view > x1_view)
-  //  return;
-  //if (x0_view > 0 &&  2 * y0_view < x0_view)
-  //  return;
+  //Cut wall. Is it good?
+  if (x1_view < 0 && -2 * y1_view > x1_view)
+    return;
+  if (x0_view > 0 &&  2 * y0_view < x0_view)
+    return;
 
   //Don't render too near, or back walls
   if ((y0_view < FRONT_CLIP) && (y1_view < FRONT_CLIP))
