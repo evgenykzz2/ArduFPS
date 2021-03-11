@@ -1,10 +1,11 @@
 #ifndef TABLES_H
 #define TABLES_H
+#include <stdint.h>
 
 namespace ArduFPS
 {
-  static const int16_t g_cos[360];
-  static const int16_t g_sin[360];
+  extern const int16_t g_cos[360];
+  extern const int16_t g_sin[360];
 }
 
 #endif

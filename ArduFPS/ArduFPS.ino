@@ -22,6 +22,9 @@ void setup()
 
   arduboy.begin();
   arduboy.setFrameRate(TARGET_FRAMERATE);
+
+  ArduFPS::Game::Init();
+  ArduFPS::Game::StartLevel();
 }
 
 #ifdef ESP8266
@@ -32,5 +35,9 @@ void loop()
 {
   if (!arduboy.nextFrame())
     return;
+  
+  ArduFPS::Game::Control();
+  ArduFPS::Game::Draw();
+
   arduboy.display(true);
 }

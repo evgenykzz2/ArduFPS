@@ -7,16 +7,21 @@
 #else
 #include <Arduboy2.h>
 #include <ArduboyTones.h>
+extern Arduboy2 arduboy;
 extern ArduboyTones sound;
 #endif
 
 #define VERSION "0.1"
+#define MAP_WIDTH 16
+#define MAP_HEIGHT 16
 
 #define TARGET_FRAMERATE 30
-#define RENDER_RADIUS 10
+#define RENDER_RADIUS 8
+#define MOVEMENT_COLISION 48
+#define MOVEMENT_SPEED_DIVIDER 16
 
-#define MAP_WIDTH 32
-#define MAP_HEIGHT 32
-
+#define FRONT_CLIP 16
+#define WALL_HEIGHT 180
+#define NEAR_PLANE 64
 
 #endif

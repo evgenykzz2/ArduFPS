@@ -9,7 +9,10 @@ namespace ArduFPS
 class Render
 {
 public:
-  static int16_t z_buffer[128];
+  static uint8_t z_buffer[128];
+
+  static void Prepare();
+  static void RenderMap();
 };
 
 }

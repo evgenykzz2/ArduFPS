@@ -1,4 +1,5 @@
 #include "Tables.h"
+#include <avr/pgmspace.h>
 
 namespace ArduFPS
 {
