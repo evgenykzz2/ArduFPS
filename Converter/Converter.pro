@@ -28,7 +28,8 @@ SOURCES += \
         mainwindow.cpp
 
 HEADERS += \
-        mainwindow.h
+        mainwindow.h    \
+        picojson.h
 
 FORMS += \
         mainwindow.ui
