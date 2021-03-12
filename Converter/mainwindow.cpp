@@ -20,24 +20,27 @@ void MainWindow::ConvertTextures(std::stringstream& stream, QString file_name, c
     stream << "const uint16_t " << name << "[] PROGMEM =" << std::endl;
     stream << "{" << std::endl;
     int index = 0;
-    for (int xi = 0; xi < img.width()/16; ++xi)
+    for (int yi = 0; yi < img.height()/16; ++yi)
     {
-        for (int x = 0; x < 16; ++x)
+        for (int xi = 0; xi < img.width()/16; ++xi)
         {
-            uint16_t value = 0;
-            for (int y = 0; y < 16; ++y)
+            for (int x = 0; x < 16; ++x)
             {
-                uint32_t color = img.pixel(x + xi*16, y);
-                if ( (color & 0xFF) > 128)
-                    value |= 1 << y;
-            }
+                uint16_t value = 0;
+                for (int y = 0; y < 16; ++y)
+                {
+                    uint32_t color = img.pixel(x + xi*16, y + yi*16);
+                    if ( (color & 0xFF) > 128)
+                        value |= 1 << y;
+                }
 
-            if (index % 16 == 0)
-                stream << "  ";
-            stream << "0x" << std::hex << std::setw(2) << std::setfill('0') << (((int)value)&0xFFFF) << ",";
-            if (index % 16 == 15)
-                stream << std::endl;
-            index ++;
+                if (index % 16 == 0)
+                    stream << "  ";
+                stream << "0x" << std::hex << std::setw(2) << std::setfill('0') << (((int)value)&0xFFFF) << ",";
+                if (index % 16 == 15)
+                    stream << std::endl;
+                index ++;
+            }
         }
     }
     stream << std::endl <<"};" << std::endl;

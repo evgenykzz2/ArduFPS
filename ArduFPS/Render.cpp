@@ -12,6 +12,7 @@ uint8_t Render::z_buffer[WIDTH];
 static int16_t s_world2local_cos;
 static int16_t s_world2local_sin;
 static uint8_t s_render_cell;
+static uint8_t s_render_texture;
 static uint8_t s_render_side;
 
 void World2Local(int16_t x, int16_t y, int16_t* x_out, int16_t* y_out)
@@ -55,9 +56,9 @@ void RenderWallSegment(int16_t x1, int16_t w1, int16_t x2, int16_t w2)
   {
     if (x >= x2)
       break;
-    if (Render::z_buffer[x] == 0)
+    if (w > Render::z_buffer[x])
     {
-      Render::z_buffer[x] = w;
+      Render::z_buffer[x] = w > 255 ? 255 : w;
       /*if (w > 40)
       {
         int16_t y0 = 32-w/2;
@@ -247,13 +248,12 @@ void RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16_t x2, i
       break;
     if (Render::z_buffer[x] == 0)
     {
+      /////////////////////////////    NEW line, no need to draw blask pixels
       Render::z_buffer[x] = w > 255 ? 255 : (uint8_t) w;
-      //arduboy.drawFastVLine(x, 32 - w/2, w);
-
-      int16_t y0 = 32-w/2;
-      int16_t y1 = 32+w/2;
+      int16_t y0 = 32-w/2;  //y0 will be filled
+      int16_t y1 = 33+w/2;  //y1 will not be filled
       int16_t v0 = 0;
-      int16_t v1 = TEXTURE_SIZE-1;
+      int16_t v1 = TEXTURE_SIZE;
 
       int16_t dy = y1 - y0;
       int16_t verror = dy / 2;
@@ -261,7 +261,7 @@ void RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16_t x2, i
       int16_t dv = v1-v0;
       int16_t ur = (u / w) & (TEXTURE_SIZE-1);
 
-      uint16_t txt_pixel = pgm_read_word(g_texture + ur + (s_render_cell-1)*TEXTURE_SIZE*TEXTURE_SIZE/16);
+      uint16_t txt_pixel = pgm_read_word(g_texture + ur + s_render_texture*TEXTURE_SIZE*TEXTURE_SIZE/16);
       if (y0 < 0)
       {
         verror -= dv*(-y0);
@@ -271,33 +271,13 @@ void RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16_t x2, i
         verror += d*dy;
         y0 = 0;
       }
-
-      /*if ( (uint8_t)(s_render_side & (CELL_SIDE_MASK_LEFT | CELL_SIDE_MASK_RIGHT)) != 0 && w > 10)
       {
-        for (int16_t y = y0; y <= y1; ++y)
-        {
-          if (y >= HEIGHT)
-            break;
-          if ( (uint8_t)(txt_pixel & 1) != 0 & (uint8_t)((x|y) & 1) != 0 )
-          {
-            uint8_t bt = 1 << ((uint8_t)y & 7);
-            uint16_t row_offset = ((uint8_t)y & 0xF8) * WIDTH / 8 + (uint16_t)x;
-            arduboy.sBuffer[row_offset] |= bt;
-          }
-          verror -= dv;
-          while (verror < 0)
-          {
-            v++;
-            verror += dy;
-            txt_pixel >>= 1;
-          }
-        }
-      } else*/
-      {
-        if (y1 >= HEIGHT-1)
-          y1 = HEIGHT-1;
+        if (y1 > HEIGHT)
+          y1 = HEIGHT;
 
         uint8_t y_begin = 8-(y0 & 7);
+        if (y0+y_begin > y1)
+          y_begin = y1-y0;
         if (y_begin != 0)
         {
           uint8_t bt = 1 << ((uint8_t)y0 & 7);
@@ -344,7 +324,7 @@ void RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16_t x2, i
         }
 
         uint8_t y_end = y1 & 7;
-        if (y_end != 0)
+        if (y0 != y1 && y_end != 0)
         {
           uint8_t bt = 1;
           uint16_t row_offset = y0 * WIDTH / 8 + (uint16_t)x;
@@ -364,23 +344,51 @@ void RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16_t x2, i
           }
           y0 += y_end;
           arduboy.sBuffer[row_offset] = data;
-        }
- 
-        /*if (y0 == 0 && y1 >= HEIGHT-1)
+        }   
+      }
+    } else if (w > Render::z_buffer[x])
+    {
+      Render::z_buffer[x] = w > 255 ? 255 : (uint8_t) w;
+      int16_t y0 = 32-w/2;  //y0 will be filled
+      int16_t y1 = 33+w/2;  //y1 will not be filled
+      int16_t v0 = 0;
+      int16_t v1 = TEXTURE_SIZE;
+
+      int16_t dy = y1 - y0;
+      int16_t verror = dy / 2;
+      int16_t v = v0;
+      int16_t dv = v1-v0;
+      int16_t ur = (u / w) & (TEXTURE_SIZE-1);
+
+      uint16_t txt_pixel = pgm_read_word(g_texture + ur + s_render_texture*TEXTURE_SIZE*TEXTURE_SIZE/16);
+      if (y0 < 0)
+      {
+        verror -= dv*(-y0);
+        int16_t d = (-verror + (dy-1)) / dy;
+        v += d;
+        txt_pixel >>= d;
+        verror += d*dy;
+        y0 = 0;
+      }
+      {
+        if (y1 > HEIGHT)
+          y1 = HEIGHT;
+
+        uint8_t y_begin = 8-(y0 & 7);
+        if (y0+y_begin > y1)
+          y_begin = y1-y0;
+        if (y_begin != 0)
         {
-        } else
-        {
-          
-          for (int16_t y = y0; y <= y1; ++y)
+          uint8_t bt = 1 << ((uint8_t)y0 & 7);
+          uint16_t row_offset = ((uint8_t)y0 & 0xF8) * WIDTH / 8 + (uint16_t)x;
+          uint8_t data = arduboy.sBuffer[row_offset];
+          for (uint8_t y = 0; y < y_begin; ++y)
           {
-            if (y >= HEIGHT)
-              break;
             if ( (uint8_t)(txt_pixel & 1) != 0 )
-            {
-              uint8_t bt = 1 << ((uint8_t)y & 7);
-              uint16_t row_offset = ((uint8_t)y & 0xF8) * WIDTH / 8 + (uint16_t)x;
-              arduboy.sBuffer[row_offset] |= bt;
-            }
+              data |= bt;
+            else
+              data &= ~bt;
+            bt <<= 1;
             verror -= dv;
             while (verror < 0)
             {
@@ -389,53 +397,62 @@ void RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16_t x2, i
               txt_pixel >>= 1;
             }
           }
-        }*/        
+          y0 += y_begin;
+          arduboy.sBuffer[row_offset] = data;
+        }
+
+        uint8_t full_blocks = (y1-y0)/8;
+        for (uint8_t y = 0; y < full_blocks; ++y)
+        {
+          uint16_t row_offset = (uint16_t)y0 * WIDTH / 8 + (uint16_t)x;
+          uint8_t data = arduboy.sBuffer[row_offset];
+          uint8_t bt = 1;
+          for (uint8_t yi = 0; yi < 8; ++yi)
+          {
+            if ( (uint8_t)(txt_pixel & 1) != 0 )
+              data |= bt;
+            else
+              data &= ~bt;
+            bt <<= 1;
+            verror -= dv;
+            while (verror < 0)
+            {
+              v++;
+              verror += dy;
+              txt_pixel >>= 1;
+            }
+          }
+          arduboy.sBuffer[row_offset] = data;
+          y0 += 8;
+        }
+
+        uint8_t y_end = y1 & 7;
+        if (y0 != y1 && y_end != 0)
+        {
+          uint8_t bt = 1;
+          uint16_t row_offset = y0 * WIDTH / 8 + (uint16_t)x;
+          uint8_t data = arduboy.sBuffer[row_offset];
+          for (uint8_t y = 0; y < y_end; ++y)
+          {
+            if ( (uint8_t)(txt_pixel & 1) != 0 )
+              data |= bt;
+            else
+              data &= ~bt;
+            bt <<= 1;
+            verror -= dv;
+            while (verror < 0)
+            {
+              v++;
+              verror += dy;
+              txt_pixel >>= 1;
+            }
+          }
+          y0 += y_end;
+          arduboy.sBuffer[row_offset] = data;
+        }   
       }
-
-      /*while (y1 < 36)
-      {
-        if (((uint8_t)(y1 & 15)) == 2)
-        {
-          uint8_t bt = 1 << ((uint8_t)y1 & 7);
-          uint16_t row_offset = ((uint8_t)y1 & 0xF8) * WIDTH / 8 + (uint16_t)x;
-          arduboy.sBuffer[row_offset] |= bt;
-        }
-        ++y1;
-      }
-
-      while (y1 < 48)
-      {
-        if ((uint8_t)(y1 & 7) == 4)
-        {
-          uint8_t bt = 1 << ((uint8_t)y1 & 7);
-          uint16_t row_offset = ((uint8_t)y1 & 0xF8) * WIDTH / 8 + (uint16_t)x;
-          arduboy.sBuffer[row_offset] |= bt;
-        }
-        ++y1;
-      }*/
-
-      /*while (y1 < 44)
-      {
-        if ((uint8_t)(y1 & 3) == 1)
-        {
-          uint8_t bt = 1 << ((uint8_t)y1 & 7);
-          uint16_t row_offset = ((uint8_t)y1 & 0xF8) * WIDTH / 8 + (uint16_t)x;
-          arduboy.sBuffer[row_offset] |= bt;
-        }
-        ++y1;
-      }
-
-      while (y1 < HEIGHT)
-      {
-        if ((uint8_t)(y1 & 1) == 1)
-        {
-          uint8_t bt = 1 << ((uint8_t)y1 & 7);
-          uint16_t row_offset = ((uint8_t)y1 & 0xF8) * WIDTH / 8 + (uint16_t)x;
-          arduboy.sBuffer[row_offset] |= bt;
-        }
-        ++y1;
-      }*/
     }
+
     werror -= dw;
     while (werror < 0)
     {
@@ -515,32 +532,66 @@ void RenderCell(int8_t x, int8_t y, uint8_t flags)
   int16_t xc = (int16_t)x * 256;
   int16_t yc = (int16_t)y * 256;
 
-  //Left side
-  if (Player::x < xc && (uint8_t)(flags & CELL_SIDE_MASK_LEFT))
+  if ( (uint8_t)(s_render_cell & CELL_FLAG_DOOR) != 0)
   {
-    s_render_side = CELL_SIDE_MASK_LEFT;
-    RenderWall(xc, yc+256, xc, yc);
-  }
-
-  //Right side
-  if (Player::x > xc && (uint8_t)(flags & CELL_SIDE_MASK_RIGHT))
+    if ((uint8_t)(s_render_cell & CELL_FLAG_HORIZONTAL) != 0)
+    {
+      //Bottom side
+      if (Player::y < yc && (uint8_t)(flags & CELL_SIDE_MASK_BOTTOM))
+      {
+        s_render_side = CELL_SIDE_MASK_BOTTOM;
+        RenderWall(xc, yc+128, xc+256, yc+128);
+      }
+      //Top side
+      if (Player::y > yc && (uint8_t)(flags & CELL_SIDE_MASK_TOP))
+      {
+        s_render_side = CELL_SIDE_MASK_TOP;
+        RenderWall(xc+256, yc+128, xc, yc+128);
+    }
+    } else
+    {
+      //Left side
+      if (Player::x < xc && (uint8_t)(flags & CELL_SIDE_MASK_LEFT))
+      {
+        s_render_side = CELL_SIDE_MASK_LEFT;
+        RenderWall(xc+128, yc+256, xc+128, yc);
+      }
+      //Right side
+      if (Player::x > xc && (uint8_t)(flags & CELL_SIDE_MASK_RIGHT))
+      {
+        s_render_side = CELL_SIDE_MASK_RIGHT;
+        RenderWall(xc+128, yc, xc+128, yc+256);
+      }
+    }
+  } else
   {
-    s_render_side = CELL_SIDE_MASK_RIGHT;
-    RenderWall(xc+256, yc, xc+256, yc+256);
-  }
-
-  //Bottom side
-  if (Player::y < yc && (uint8_t)(flags & CELL_SIDE_MASK_BOTTOM))
-  {
-    s_render_side = CELL_SIDE_MASK_BOTTOM;
-    RenderWall(xc, yc, xc+256, yc);
-  }
-
-  //Top side
-  if (Player::y > yc && (uint8_t)(flags & CELL_SIDE_MASK_TOP))
-  {
-    s_render_side = CELL_SIDE_MASK_TOP;
-    RenderWall(xc+256, yc+256, xc, yc+256); 
+    //Left side
+    if (Player::x < xc && (uint8_t)(flags & CELL_SIDE_MASK_LEFT))
+    {
+      s_render_side = CELL_SIDE_MASK_LEFT;
+      RenderWall(xc, yc+256, xc, yc);
+    }
+  
+    //Right side
+    if (Player::x > xc && (uint8_t)(flags & CELL_SIDE_MASK_RIGHT))
+    {
+      s_render_side = CELL_SIDE_MASK_RIGHT;
+      RenderWall(xc+256, yc, xc+256, yc+256);
+    }
+  
+    //Bottom side
+    if (Player::y < yc && (uint8_t)(flags & CELL_SIDE_MASK_BOTTOM))
+    {
+      s_render_side = CELL_SIDE_MASK_BOTTOM;
+      RenderWall(xc, yc, xc+256, yc);
+    }
+  
+    //Top side
+    if (Player::y > yc && (uint8_t)(flags & CELL_SIDE_MASK_TOP))
+    {
+      s_render_side = CELL_SIDE_MASK_TOP;
+      RenderWall(xc+256, yc+256, xc, yc+256); 
+    }
   }
 }
 
@@ -672,6 +723,7 @@ void Render::RenderMap()
         if (flags == 0)
           continue;
         s_render_cell = Map::m_cell[cell_index];
+        s_render_texture = s_render_cell & CELL_MASK_TEXTURE;
         RenderCell(rx, ry, flags);
         //if (g_line_done == RENDER_WIDTH)
         //  break;
@@ -690,6 +742,7 @@ void Render::RenderMap()
         if (flags == 0)
           continue;
         s_render_cell = Map::m_cell[cell_index];
+        s_render_texture = s_render_cell & CELL_MASK_TEXTURE;
         RenderCell(rx, ry, flags);
         //if (g_line_done == RENDER_WIDTH)
         //  break;
