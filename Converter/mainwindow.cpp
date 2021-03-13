@@ -3,14 +3,19 @@
 #include <stdint.h>
 #include <QImage>
 #include <QPainter>
+#include <QDebug>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <sstream>
 #include <iomanip>
 #include "picojson.h"
 
+#define JSON_FILE_NAME "../assets/levels.json"
+
 static const QColor s_color_select(0, 255, 0);
 static const QColor s_color_unselect(0, 0, 192);
+static const QColor s_color_empty(64, 64, 64);
+static const int s_map_scale = 2;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -52,11 +57,40 @@ MainWindow::MainWindow(QWidget *parent) :
     UpdateLevel();
     ui->label_tileset->installEventFilter(this);
     ui->label_full_tile_set->installEventFilter(this);
+    ui->label_map_view->installEventFilter(this);
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+int MainWindow::Size2Width(MainWindow::ELevelSize size)
+{
+    switch (size)
+    {
+    case LevelSize_8x8:
+        return 8;
+    case LevelSize_16x8:
+        return 16;
+    case LevelSize_16x16:
+        return 16;
+    }
+    return 8;
+}
+
+int MainWindow::Size2Height(MainWindow::ELevelSize size)
+{
+    switch (size)
+    {
+    case LevelSize_8x8:
+        return 8;
+    case LevelSize_16x8:
+        return 8;
+    case LevelSize_16x16:
+        return 16;
+    }
+    return 8;
 }
 
 bool MainWindow::eventFilter( QObject* object, QEvent* event )
@@ -89,6 +123,27 @@ bool MainWindow::eventFilter( QObject* object, QEvent* event )
                 if (tileset_itt != m_tileset_map.end())
                     tileset_itt->second.tiles[m_current_tile] = tile_x + tile_y*16;
                 UpdateTileset();
+                UpdateLevel();
+            }
+        }
+    }
+
+    if( object == ui->label_map_view && (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseMove) )
+    {
+        QMouseEvent* mouse_event = (QMouseEvent*)event;
+        if ( (int)(mouse_event->buttons() & Qt::LeftButton) != 0 )
+        {
+            int tile_x = mouse_event->x() / (16*s_map_scale);
+            int tile_y = mouse_event->y() / (16*s_map_scale);
+            int current_index = ui->combo_level->itemData( ui->combo_level->currentIndex() ).toInt();
+            auto level_itt = m_level_map.find(current_index);
+            if (level_itt != m_level_map.end())
+            {
+                if (m_current_tile != level_itt->second.cell[tile_x + tile_y*16])
+                {
+                    level_itt->second.cell[tile_x + tile_y*16] = m_current_tile;
+                    UpdateLevel();
+                }
             }
         }
     }
@@ -337,6 +392,42 @@ void MainWindow::LoadTextures()
 
 void MainWindow::LoadJson()
 {
+    QFile file(JSON_FILE_NAME);
+    file.open(QFile::ReadOnly);
+    QByteArray data = file.readAll();
+
+    picojson::value json;
+    picojson::parse(json, data.constData());
+
+    picojson::array tileset_array = json.get<picojson::object>()["tileset"].get<picojson::array>();
+    for ( auto itt = tileset_array.begin(); itt != tileset_array.end(); ++itt)
+    {
+        picojson::array list = itt->get<picojson::array>();
+        TileSet tile_set;
+        tile_set.tiles.resize(16);
+        for (size_t i = 0; i < 16; ++i)
+            tile_set.tiles[i] = (int)( list[i].get<double>() );
+        ui->combo_tileset->addItem(QString("%1").arg((int)m_tileset_map.size()));
+        m_tileset_map.insert(std::make_pair((int)m_tileset_map.size(), tile_set));
+    }
+
+    picojson::array level_array = json.get<picojson::object>()["levels"].get<picojson::array>();
+    for ( auto itt = level_array.begin(); itt != level_array.end(); ++itt)
+    {
+        picojson::object level_obj = itt->get<picojson::object>();
+        Level level;
+        level.tileset_index = (int)level_obj["tileset"].get<double>();
+        level.title = level_obj["title"].get<std::string>();
+        level.index = (int)level_obj["index"].get<double>();
+        level.level_size = (ELevelSize)((int)level_obj["size"].get<double>());
+        level.level_type = (ElevelType)((int)level_obj["type"].get<double>());
+        picojson::array list = level_obj["cell"].get<picojson::array>();
+        level.cell.resize(16*16);
+        for (size_t i = 0; i < 16*16; ++i)
+            level.cell[i] = (int)( list[i].get<double>() );
+        ui->combo_level->addItem(QString("%1").arg((int)m_level_map.size()));
+        m_level_map.insert(std::make_pair((int)m_level_map.size(), level));
+    }
 }
 
 void MainWindow::SaveJson()
@@ -373,7 +464,7 @@ void MainWindow::SaveJson()
     json.get<picojson::object>()["levels"] = picojson::value(levels_array);
 
     QString string( QString::fromStdString(json.serialize(true)) );
-    QFile file("../assets/levels.json");
+    QFile file(JSON_FILE_NAME);
     file.open(QFile::WriteOnly);
     file.write(string.toLocal8Bit().data());
     file.close();
@@ -395,8 +486,8 @@ void MainWindow::UpdateTileset()
             auto itt = m_texture_tiles.find(tile_index);
             if (itt == m_texture_tiles.end())
             {
-                painter.setPen(QColor(64, 64, 64));
-                painter.setBrush(QColor(64, 64, 64));
+                painter.setPen(s_color_empty);
+                painter.setBrush(s_color_empty);
                 painter.drawRect(i*16*4, 0, 16*4-1, 16*4-1);
             } else
             {
@@ -412,6 +503,7 @@ void MainWindow::UpdateTileset()
         }
     }
     ui->label_tileset->setPixmap(QPixmap::fromImage(image));
+    ui->label_tileset->setMinimumSize(image.width(), image.height());
 }
 
 void MainWindow::on_btn_toggle_full_tileset_clicked()
@@ -429,9 +521,55 @@ void MainWindow::UpdateLevel()
     ui->combo_level_type->setCurrentIndex((int)level_itt->second.level_type);
     ui->edit_level_title->setText(QString::fromStdString(level_itt->second.title));
     ui->edit_level_title_index->setText(QString("%1").arg(level_itt->second.index));
+
+    int tileset_index = ui->combo_tileset->itemData( ui->combo_tileset->currentIndex() ).toInt();
+    auto tileset_itt = m_tileset_map.find(tileset_index);
+    if (tileset_itt == m_tileset_map.end())
+        return;
+
+    //Draw level
+    int w = Size2Width(level_itt->second.level_size);
+    int h = Size2Height(level_itt->second.level_size);
+
+    QImage image(w*16*s_map_scale, h*16*s_map_scale, QImage::Format_ARGB32);
+    image.fill(s_color_empty);
+    {
+        QPainter painter(&image);
+        for (int y = 0; y < h; ++y)
+        {
+            for (int x = 0; x < w; ++x)
+            {
+                int cell = level_itt->second.cell[x+y*16];
+                if (cell != 15)
+                {
+                    int tile_index = tileset_itt->second.tiles[cell];
+                    auto itt = m_texture_tiles.find(tile_index);
+                    if (itt != m_texture_tiles.end())
+                    {
+                        QImage img = itt->second.scaled(itt->second.width()*s_map_scale, itt->second.height()*s_map_scale);
+                        painter.drawImage(x*16*s_map_scale, y*16*s_map_scale, img);
+                    }
+                }
+                painter.setPen(s_color_unselect);
+                painter.drawRect(x*16*s_map_scale, y*16*s_map_scale, 16*s_map_scale-1, 16*s_map_scale-1);
+            }
+        }
+    }
+    ui->label_map_view->setPixmap(QPixmap::fromImage(image));
+    ui->label_map_view->setMinimumSize(image.width(), image.height());
 }
 
 void MainWindow::on_btn_save_clicked()
 {
     SaveJson();
+}
+
+void MainWindow::on_combo_level_size_currentIndexChanged(int)
+{
+    int current_index = ui->combo_level->itemData( ui->combo_level->currentIndex() ).toInt();
+    auto level_itt = m_level_map.find(current_index);
+    if (level_itt == m_level_map.end())
+        return;
+    level_itt->second.level_size = (ELevelSize)ui->combo_level_size->itemData(ui->combo_level_size->currentIndex()).toInt();
+    UpdateLevel();
 }

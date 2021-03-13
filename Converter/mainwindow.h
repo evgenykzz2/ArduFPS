@@ -47,6 +47,9 @@ class MainWindow : public QMainWindow
     std::map<int, QImage> m_texture_tiles;
     int m_current_tile;
 
+    int Size2Width(ELevelSize size);
+    int Size2Height(ELevelSize size);
+
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
@@ -55,6 +58,8 @@ private slots:
     void on_btn_toggle_full_tileset_clicked();
 
     void on_btn_save_clicked();
+
+    void on_combo_level_size_currentIndexChanged(int index);
 
 private:
     Ui::MainWindow *ui;

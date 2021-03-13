@@ -33,6 +33,7 @@ void Game::Draw()
 {
   Render::Prepare();
   Render::RenderMap();
+  Render::RenderSprite(1*256+128, 2*256+128, 32, 0);
 
   //Sprites::drawPlusMask(64-12, 64-18, g_weapon_sprites, 0);
 }

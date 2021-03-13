@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #define TEXTURE_SIZE 16
+#define SPRITE_SIZE 16
 
 namespace ArduFPS
 {
