@@ -16,7 +16,7 @@ static const uint8_t s_cell_animation_transform[] PROGMEM =
 };
 
 uint8_t Map::m_cell[MAP_WIDTH*MAP_HEIGHT];
-uint8_t Map::m_cell_flags[MAP_WIDTH*MAP_HEIGHT];
+//uint8_t Map::m_cell_flags[MAP_WIDTH*MAP_HEIGHT];
 
 uint8_t Map::m_map_width;
 uint8_t Map::m_map_height;
@@ -31,7 +31,7 @@ void Map::BuildMap(uint8_t w, uint8_t h)
   for (uint16_t i = 0; i < MAP_WIDTH*MAP_HEIGHT; ++i)
   {
     m_cell[i] = CELL_EMPTY;
-    m_cell_flags[i] = 0;
+    //m_cell_flags[i] = 0;
   }
 
   //Set border walls
@@ -64,7 +64,7 @@ void Map::BuildMap(uint8_t w, uint8_t h)
 void Map::AnalizeMap()
 {
   //Analize level map
-  for (uint8_t y = 0; y < m_map_height; ++y)
+  /*for (uint8_t y = 0; y < m_map_height; ++y)
   {
     for (uint8_t x = 0; x < m_map_width; ++x)
     {
@@ -83,7 +83,7 @@ void Map::AnalizeMap()
       if (y+1 != m_map_height && (m_cell[index+MAP_WIDTH] == CELL_EMPTY || (uint8_t)(m_cell[index+MAP_WIDTH] & CELL_FLAG_DOOR) != 0))
         m_cell_flags[index] |= CELL_SIDE_MASK_TOP;
     }
-  }
+  }*/
 }
 
 void Map::Control()

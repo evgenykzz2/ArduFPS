@@ -21,7 +21,7 @@ class Map
   static void AnalizeMap();
 public:
   static uint8_t m_cell[MAP_WIDTH*MAP_HEIGHT];
-  static uint8_t m_cell_flags[MAP_WIDTH*MAP_HEIGHT];
+  //static uint8_t m_cell_flags[MAP_WIDTH*MAP_HEIGHT];
 
   static uint8_t m_map_width;
   static uint8_t m_map_height;

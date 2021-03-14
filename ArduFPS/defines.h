@@ -13,7 +13,7 @@ extern ArduboyTones sound;
 
 #define VERSION "0.1"
 #define MAP_WIDTH 16
-#define MAP_HEIGHT 16
+#define MAP_HEIGHT 32
 
 #define TARGET_FRAMERATE 30
 #define RENDER_RADIUS 10

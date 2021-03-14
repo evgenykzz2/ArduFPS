@@ -346,7 +346,7 @@ void RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16_t x2, i
           arduboy.sBuffer[row_offset] = data;
         }   
       }
-    } else if (w > Render::z_buffer[x])
+    } else if (false)//(w > Render::z_buffer[x])
     {
       Render::z_buffer[x] = w > 255 ? 255 : (uint8_t) w;
       int16_t y0 = 32-w/2;  //y0 will be filled
@@ -595,6 +595,41 @@ void RenderCell(int8_t x, int8_t y, uint8_t flags)
   }
 }
 
+void RenderCellFull(int8_t x, int8_t y)
+{
+  int16_t xc = (int16_t)x * 256;
+  int16_t yc = (int16_t)y * 256;
+
+  uint16_t index = x+y*MAP_WIDTH;
+  //Left side
+  if (Player::x < xc && x > 0 && Map::m_cell[index-1] == CELL_EMPTY)
+  {
+    s_render_side = CELL_SIDE_MASK_LEFT;
+    RenderWall(xc, yc+256, xc, yc);
+  }
+  
+  //Right side
+  if (Player::x > xc && x < MAP_WIDTH-1 && Map::m_cell[index+1] == CELL_EMPTY)
+  {
+    s_render_side = CELL_SIDE_MASK_RIGHT;
+    RenderWall(xc+256, yc, xc+256, yc+256);
+  }
+  
+  //Bottom side
+  if (Player::y < yc && y > 0 && Map::m_cell[index-MAP_WIDTH] == CELL_EMPTY)
+  {
+    s_render_side = CELL_SIDE_MASK_BOTTOM;
+    RenderWall(xc, yc, xc+256, yc);
+  }
+  
+  //Top side
+  if (Player::y > yc && y < MAP_HEIGHT-1 && Map::m_cell[index+MAP_WIDTH] == CELL_EMPTY)
+  {
+    s_render_side = CELL_SIDE_MASK_TOP;
+    RenderWall(xc+256, yc+256, xc, yc+256); 
+  }
+}
+
 void Render::Prepare()
 {
   int16_t angle = (int16_t)90 - Player::angle;
@@ -774,12 +809,14 @@ void Render::RenderMap()
       for (int8_t rx=x_start; rx != x_end; rx += x_add)
       {
         int16_t cell_index = ry*MAP_WIDTH + rx;
-        uint8_t flags = Map::m_cell_flags[cell_index];
-        if (flags == 0)
-          continue;
+        //uint8_t flags = Map::m_cell_flags[cell_index];
+        //if (flags == 0)
+        //  continue;
         s_render_cell = Map::m_cell[cell_index];
+        if (s_render_cell == CELL_EMPTY)
+          continue;
         s_render_texture = s_render_cell & CELL_MASK_TEXTURE;
-        RenderCell(rx, ry, flags);
+        RenderCellFull(rx, ry);
         //if (g_line_done == RENDER_WIDTH)
         //  break;
       }
@@ -793,12 +830,14 @@ void Render::RenderMap()
       for (int8_t ry=y_start; ry != y_end; ry += y_add)
       {
         int16_t cell_index = ry*MAP_WIDTH + rx;
-        uint8_t flags = Map::m_cell_flags[cell_index];
-        if (flags == 0)
-          continue;
+        //uint8_t flags = Map::m_cell_flags[cell_index];
+        //if (flags == 0)
+        //  continue;
         s_render_cell = Map::m_cell[cell_index];
+        if (s_render_cell == CELL_EMPTY)
+          continue;
         s_render_texture = s_render_cell & CELL_MASK_TEXTURE;
-        RenderCell(rx, ry, flags);
+        RenderCellFull(rx, ry);
         //if (g_line_done == RENDER_WIDTH)
         //  break;
       }
