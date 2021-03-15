@@ -10,6 +10,52 @@ int16_t Player::x;
 int16_t Player::y;
 int16_t Player::angle;
 
+void Player::TeleportToMapStart()
+{
+  x = Map::m_cell_start_x * 256 + 128;
+  y = Map::m_cell_start_y * 256 + 128;
+  uint16_t index = Map::m_cell_start_x + Map::m_cell_start_y*MAP_WIDTH;
+  if ( (uint8_t)(Map::m_cell[index+1] & CELL_WALKABLE_FLAG) != 0 )
+  {
+    x -= 64;
+    angle = 0;
+  } else if ( (uint8_t)(Map::m_cell[index-1] & CELL_WALKABLE_FLAG) != 0 )
+  {
+    x += 64;
+    angle = 180;
+  }else if ( (uint8_t)(Map::m_cell[index+MAP_WIDTH] & CELL_WALKABLE_FLAG) != 0 )
+  {
+    y -= 64;
+    angle = 90;
+  } else if ( (uint8_t)(Map::m_cell[index-MAP_WIDTH] & CELL_WALKABLE_FLAG) != 0 )
+  {
+    y += 64;
+    angle = 270;
+  }
+}
+
+bool Player::CollideCell(uint8_t cell_x, uint8_t cell_y, uint8_t id)
+{
+  if (id == CELL_EMPTY)
+    return false;
+  else if ( (uint8_t)(id & CELL_FLAG_DOOR) == CELL_FLAG_DOOR )
+  {
+    if (Map::m_current_door_cell_x == 0 || cell_x != Map::m_current_door_cell_x || cell_y != Map::m_current_door_cell_y)
+    {
+      Map::m_current_door_cell_x = cell_x;
+      Map::m_current_door_cell_y = cell_y;
+      Map::m_current_door_progress = 0;
+      Map::m_current_door_direction = 0;
+      Map::m_current_door_open_counter = 0;
+    }
+    if (Map::m_current_door_cell_x == cell_x && Map::m_current_door_cell_y == cell_y && Map::m_current_door_progress == 256)
+      return false;
+    else
+      return true;
+  } else 
+    return true;
+}
+
 void Player::Control(uint8_t buttons)
 {
   if (buttons & RIGHT_BUTTON)
@@ -51,7 +97,8 @@ void Player::Control(uint8_t buttons)
         int8_t ix = (x + dx + MOVEMENT_COLISION) >> 8;
         if (ix >= 0 && ix < MAP_WIDTH)
         {
-          if (Map::m_cell[(int16_t)iy*MAP_WIDTH+(int16_t)ix] != CELL_EMPTY)
+          uint8_t cell = Map::m_cell[(int16_t)iy*MAP_WIDTH+(int16_t)ix];
+          if (CollideCell(ix, iy, cell))
             dx = (int16_t)ix*256 - x - MOVEMENT_COLISION;
         }
       }
@@ -63,7 +110,8 @@ void Player::Control(uint8_t buttons)
         int8_t ix = (x + dx - MOVEMENT_COLISION) >> 8;
         if (ix >= 0 && ix < MAP_WIDTH)
         {
-          if (Map::m_cell[(int16_t)iy*MAP_WIDTH+(int16_t)ix] != CELL_EMPTY)
+          uint8_t cell = Map::m_cell[(int16_t)iy*MAP_WIDTH+(int16_t)ix];
+          if (CollideCell(ix, iy, cell))
             dx = (int16_t)(ix+1)*256 - x + MOVEMENT_COLISION;
         }
       }
@@ -77,7 +125,8 @@ void Player::Control(uint8_t buttons)
         int8_t iy = (y + dy + MOVEMENT_COLISION) >> 8;
         if (iy >= 0 && iy < MAP_HEIGHT)
         {
-          if (Map::m_cell[(int16_t)iy*MAP_WIDTH+(int16_t)ix] != CELL_EMPTY)
+          uint8_t cell = Map::m_cell[(int16_t)iy*MAP_WIDTH+(int16_t)ix];
+          if (CollideCell(ix, iy, cell))
             dy = (int16_t)iy*256 - y - MOVEMENT_COLISION;
         }
       }
@@ -89,7 +138,8 @@ void Player::Control(uint8_t buttons)
         int8_t iy = (y + dy - MOVEMENT_COLISION) >> 8;
         if (iy >= 0 && iy < MAP_HEIGHT)
         {
-          if (Map::m_cell[(int16_t)iy*MAP_WIDTH+(int16_t)ix] != CELL_EMPTY)
+          uint8_t cell = Map::m_cell[(int16_t)iy*MAP_WIDTH+(int16_t)ix];
+          if (CollideCell(ix, iy, cell))
             dy = (int16_t)(iy+1)*256 - y + MOVEMENT_COLISION;
         }
       }

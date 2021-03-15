@@ -25,6 +25,9 @@ extern ArduboyTones sound;
 #define WALL_HEIGHT 180
 #define NEAR_PLANE 64
 
+#define DOOR_OPEN_DURATION 90
+#define DOOR_OPEN_SPEED_MULTIPLAYER 14
+
 
 
 #endif

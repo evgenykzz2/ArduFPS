@@ -2,6 +2,11 @@
 #include "Map.h"
 #include <avr/pgmspace.h>
 
+#define ID_DOOR_A 13
+#define ID_DOOR_B 14
+#define ID_START  16
+#define ID_FINISH 17
+
 namespace ArduFPS
 {
 
@@ -30,6 +35,12 @@ void Level::Load(uint8_t level)
     Map::m_map_height = 32;
   }
 
+  Map::m_cell_start_x = 1;
+  Map::m_cell_start_y = 1;
+  
+  Map::m_cell_finish_x = Map::m_map_width-1;
+  Map::m_cell_finish_y = Map::m_map_height-1;
+
   uint16_t bit_buffer = pgm_read_byte(s_level + pos) | ( pgm_read_byte(s_level + pos + 1) << 8); pos += 2;
   uint8_t bit_pos = 0;
   for (uint8_t y = 0; y < Map::m_map_height; ++y)
@@ -52,8 +63,20 @@ void Level::Load(uint8_t level)
         uint8_t t = (bit_buffer >> bit_pos) & 31;
         bit_pos += 5;
         Map::m_cell[index] = pgm_read_byte(s_tile_set + tileset_offset + t);
-        if (t == 13 || t == 14)
-          Map::m_cell[index] |= CELL_FLAG_DOOR | CELL_FLAG_HORIZONTAL;
+        if (t == ID_DOOR_A || t == ID_DOOR_B)
+        {
+          Map::m_cell[index] |= CELL_FLAG_DOOR;
+        } else if (t == ID_START)
+        {
+          Map::m_cell[index] = CELL_EMPTY;
+          Map::m_cell_start_x = x;
+          Map::m_cell_start_y = y;
+        } else if (t == ID_FINISH)
+        {
+          Map::m_cell[index] = CELL_EMPTY;
+          Map::m_cell_finish_x = x;
+          Map::m_cell_finish_y = y;
+        }
       }
       if (bit_pos >= 8)
       {
@@ -64,6 +87,21 @@ void Level::Load(uint8_t level)
       }
     }
   }
+
+  for (uint8_t y = 0; y < Map::m_map_height; ++y)
+  {
+    for (uint8_t x = 0; x < Map::m_map_width; ++x)
+    {
+      uint16_t index = (uint16_t)x + (uint16_t)y*MAP_WIDTH;
+      if ( (uint8_t)(Map::m_cell[index] & CELL_FLAG_DOOR) == CELL_FLAG_DOOR )
+      {
+        //Check Door Orientation
+        if (Map::m_cell[index+1] != CELL_EMPTY)
+          Map::m_cell[index] |= CELL_FLAG_HORIZONTAL;
+      }
+    }
+  }
+  Map::DoorReset();
 }
 
 }

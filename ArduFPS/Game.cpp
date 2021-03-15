@@ -22,6 +22,7 @@ void Game::StartLevel()
 
   //Map::BuildMap(9, 9);
   Level::Load(0);
+  Player::TeleportToMapStart();
 }
 
 void Game::Control()

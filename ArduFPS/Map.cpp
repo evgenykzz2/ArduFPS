@@ -1,4 +1,5 @@
 #include "Map.h"
+#include "Player.h"
 
 namespace ArduFPS
 {
@@ -20,10 +21,18 @@ uint8_t Map::m_cell[MAP_WIDTH*MAP_HEIGHT];
 
 uint8_t Map::m_map_width;
 uint8_t Map::m_map_height;
+
+uint8_t Map::m_cell_start_x;
+uint8_t Map::m_cell_start_y;
+  
+uint8_t Map::m_cell_finish_x;
+uint8_t Map::m_cell_finish_y;
   
 uint8_t Map::m_current_door_cell_x;
 uint8_t Map::m_current_door_cell_y;
-uint8_t Map::m_current_door_progress;
+int16_t Map::m_current_door_progress;
+uint8_t Map::m_current_door_open_counter;
+uint8_t Map::m_current_door_direction;
 
 void Map::BuildMap(uint8_t w, uint8_t h)
 {
@@ -47,9 +56,7 @@ void Map::BuildMap(uint8_t w, uint8_t h)
   m_map_width = w;
   m_map_height = h;
 
-  m_current_door_cell_x = 0;
-  m_current_door_cell_y = 0;
-  m_current_door_progress = 0;
+  DoorReset();
 
   m_cell[2 + 3*MAP_WIDTH] = 0;
   m_cell[2 + 4*MAP_WIDTH] = 5;// | CELL_FLAG_DOOR;
@@ -88,25 +95,74 @@ void Map::AnalizeMap()
 
 void Map::Control()
 {
-  return;
+  if (m_current_door_cell_x != 0)
+  {
+    //Door is open, wait X frames
+    if (m_current_door_open_counter != 0)
+    {
+      //if ((uint8_t)(arduboy.frameCount & 3) == 0)
+      if ((Player::x >> 8) != m_current_door_cell_x || (Player::y >> 8) != m_current_door_cell_y)
+      {
+        m_current_door_open_counter --;
+        if (m_current_door_open_counter == 0)
+        {
+          m_current_door_direction = 1;
+        }
+      }
+    }
+
+    //Door openning
+    if (m_current_door_direction == 0 && m_current_door_progress < 256)
+    {
+      m_current_door_progress = (m_current_door_progress * DOOR_OPEN_SPEED_MULTIPLAYER + 280*(16-DOOR_OPEN_SPEED_MULTIPLAYER)) / 16;
+      //m_current_door_progress += 8;
+      if (m_current_door_progress >= 256)
+      {
+        m_current_door_progress = 256;
+        m_current_door_open_counter = DOOR_OPEN_DURATION;
+      }
+    }
+
+    //Door closing
+    if (m_current_door_direction == 1 && m_current_door_progress > 0)
+    {
+      m_current_door_progress = (m_current_door_progress * DOOR_OPEN_SPEED_MULTIPLAYER + 0*(16-DOOR_OPEN_SPEED_MULTIPLAYER)) / 16;
+      //m_current_door_progress -= 8;
+      if (m_current_door_progress <= 0)
+      {
+        m_current_door_progress = 0;
+        m_current_door_cell_x = 0;
+      }
+    }
+  }
+
   for (uint8_t y = 0; y < m_map_height; ++y)
   {
-    uint16_t id = y*MAP_WIDTH;
     for (uint8_t x = 0; x < m_map_width; ++x)
     {
+      uint16_t id = x + y*MAP_WIDTH;
       uint8_t cell = m_cell[id];
-      if ( (uint8_t)(m_cell[id] & CELL_MASK_TEXTURE) != CELL_MASK_TEXTURE)
+      uint8_t cell_n = m_cell[id] & CELL_MASK_TEXTURE;
+      if ( cell_n != CELL_MASK_TEXTURE)
       {
-        uint8_t mask = pgm_read_byte(s_cell_animation_mask+cell);
+        uint8_t mask = pgm_read_byte(s_cell_animation_mask+cell_n);
         if (mask != 0xFF)
         {
           if ((uint8_t)(arduboy.frameCount & mask) == 0)
-            m_cell[id] = pgm_read_byte(s_cell_animation_transform+cell);
+            m_cell[id] = (m_cell[id] & (~CELL_MASK_TEXTURE)) | (pgm_read_byte(s_cell_animation_transform+cell_n) & CELL_MASK_TEXTURE);
         }
       }
-      ++id;
     }
   }
+}
+
+void Map::DoorReset()
+{
+  m_current_door_cell_x = 0;
+  m_current_door_cell_y = 0;
+  m_current_door_progress = 0;
+  m_current_door_open_counter = 0;
+  m_current_door_direction = 0;
 }
 
 }

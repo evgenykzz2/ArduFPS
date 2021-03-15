@@ -270,20 +270,28 @@ void Render::RenderCellFull(int8_t x, int8_t y)
   uint16_t index = x+y*MAP_WIDTH;
   if ( (uint8_t)(s_render_cell & CELL_FLAG_DOOR) != 0)
   {
+    int16_t mov = 0;
+    if (x == Map::m_current_door_cell_x && y == Map::m_current_door_cell_y)
+    {
+      if (Map::m_current_door_progress == 256)
+        return;
+      mov = Map::m_current_door_progress;
+    }
+    
     if ((uint8_t)(s_render_cell & CELL_FLAG_HORIZONTAL) != 0)
     {
       //Bottom side
       if (Player::y < yc)
       {
         s_render_side = CELL_SIDE_MASK_BOTTOM;
-        RenderWall(xc, yc+128, xc+256, yc+128);
+        RenderWall(xc + mov, yc+128, xc+256 + mov, yc+128);
       }
       
       //Top side
       if (Player::y > yc)
       {
         s_render_side = CELL_SIDE_MASK_TOP;
-        RenderWall(xc+256, yc+128, xc, yc+128); 
+        RenderWall(xc+256 + mov, yc+128, xc + mov, yc+128);
       }
     } else
     {
@@ -291,41 +299,41 @@ void Render::RenderCellFull(int8_t x, int8_t y)
       if (Player::x < xc)
       {
         s_render_side = CELL_SIDE_MASK_LEFT;
-        RenderWall(xc+128, yc+256, xc+128, yc);
+        RenderWall(xc+128, yc+256 + mov, xc+128, yc + mov);
       }
       
       //Right side
       if (Player::x > xc)
       {
         s_render_side = CELL_SIDE_MASK_RIGHT;
-        RenderWall(xc+128, yc, xc+128, yc+256);
+        RenderWall(xc+128, yc + mov, xc+128, yc+256 + mov);
       }
     }
   } else
   {
     //Left side
-    if (Player::x < xc && x > 0 && (uint8_t)(Map::m_cell[index-1] >> 7) == 1)
+    if (Player::x < xc && x > 0 && (uint8_t)(Map::m_cell[index-1] & CELL_WALKABLE_FLAG) != 0)
     {
       s_render_side = CELL_SIDE_MASK_LEFT;
       RenderWall(xc, yc+256, xc, yc);
     }
     
     //Right side
-    if (Player::x > xc && x < MAP_WIDTH-1 && (uint8_t)(Map::m_cell[index+1] >> 7) == 1)
+    if (Player::x > xc && x < MAP_WIDTH-1 && (uint8_t)(Map::m_cell[index+1] & CELL_WALKABLE_FLAG) != 0)
     {
       s_render_side = CELL_SIDE_MASK_RIGHT;
       RenderWall(xc+256, yc, xc+256, yc+256);
     }
     
     //Bottom side
-    if (Player::y < yc && y > 0 && (uint8_t)(Map::m_cell[index-MAP_WIDTH] >> 7) == 1)
+    if (Player::y < yc && y > 0 && (uint8_t)(Map::m_cell[index-MAP_WIDTH] & CELL_WALKABLE_FLAG) != 0)
     {
       s_render_side = CELL_SIDE_MASK_BOTTOM;
       RenderWall(xc, yc, xc+256, yc);
     }
     
     //Top side
-    if (Player::y > yc && y < MAP_HEIGHT-1 && (uint8_t)(Map::m_cell[index+MAP_WIDTH] >> 7) == 1)
+    if (Player::y > yc && y < MAP_HEIGHT-1 && (uint8_t)(Map::m_cell[index+MAP_WIDTH] & CELL_WALKABLE_FLAG) != 0)
     {
       s_render_side = CELL_SIDE_MASK_TOP;
       RenderWall(xc+256, yc+256, xc, yc+256); 
