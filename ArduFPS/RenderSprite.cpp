@@ -116,6 +116,8 @@ void Render::RenderSprite(int16_t x, int16_t y, uint8_t scale, uint8_t sprite_in
     while (uerror < 0)
     {
       u ++;
+      if (u > TEXTURE_SIZE-1)
+        u = TEXTURE_SIZE-1;
       uerror += dx;
     }
   }

@@ -38,7 +38,10 @@ void Game::Draw()
   Render::Prepare();
   Render::RenderMap();
   
-  //Render::RenderSprite(1*256+128, 2*256+128, 64, animation[ (arduboy.frameCount >> 2) & 3 ]);
+  //Render::RenderSprite(1*256+128, 3*256+128, 48, 0);  //gun
+  Render::RenderSprite(1*256+128, 3*256+128, 40, 15);  //armor
+  Render::RenderSprite(3*256+128, 3*256+128, 48, 6);  //Health small
+  Render::RenderSprite(5*256+128, 3*256+128, 40, 7);  //Health big
 
   //Sprites::drawPlusMask(64-12, 64-18, g_weapon_sprites, 0);
 }
