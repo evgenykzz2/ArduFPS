@@ -88,13 +88,14 @@ void Map::AnalizeMap()
 
 void Map::Control()
 {
+  return;
   for (uint8_t y = 0; y < m_map_height; ++y)
   {
     uint16_t id = y*MAP_WIDTH;
     for (uint8_t x = 0; x < m_map_width; ++x)
     {
       uint8_t cell = m_cell[id];
-      if (m_cell[id] != CELL_EMPTY)
+      if ( (uint8_t)(m_cell[id] & CELL_MASK_TEXTURE) != CELL_MASK_TEXTURE)
       {
         uint8_t mask = pgm_read_byte(s_cell_animation_mask+cell);
         if (mask != 0xFF)

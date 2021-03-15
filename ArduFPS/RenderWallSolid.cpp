@@ -7,6 +7,8 @@
 
 namespace ArduFPS
 {
+#pragma GCC push_options
+#pragma GCC optimize ("O3")
 
 void Render::RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16_t x2, int16_t w2, int16_t u2)
 {
@@ -53,7 +55,7 @@ void Render::RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16
       break;
     if (Render::z_buffer[x] == 0)
     {
-      /////////////////////////////    NEW line, no need to draw blask pixels
+      /////////////////////////////    NEW line, no need to draw black pixels
       Render::z_buffer[x] = w > 255 ? 255 : (uint8_t) w;
       int16_t y0 = 32-w/2;  //y0 will be filled
       int16_t y1 = 33+w/2;  //y1 will not be filled
@@ -151,7 +153,17 @@ void Render::RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16
           arduboy.sBuffer[row_offset] = data;
         }   
       }
-    } else if (false)//(w > Render::z_buffer[x])
+      /*y0 ++;
+      for (int16_t y = y0; y < HEIGHT; ++y)
+      {
+        if ( (uint8_t)((x ^ y) & 0x01) == 1 )
+        {
+          uint8_t bt = 1 << ((uint8_t)y & 7);
+          uint16_t row_offset = ((uint8_t)y & 0xF8) * WIDTH / 8 + (uint16_t)x;
+          arduboy.sBuffer[row_offset] |= bt;
+        }
+      }*/
+    } else if (w > Render::z_buffer[x])
     {
       Render::z_buffer[x] = w > 255 ? 255 : (uint8_t) w;
       int16_t y0 = 32-w/2;  //y0 will be filled
@@ -273,5 +285,6 @@ void Render::RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16
   }
 }
 
+#pragma GCC pop_options
 
 }

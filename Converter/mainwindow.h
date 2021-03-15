@@ -29,7 +29,8 @@ class MainWindow : public QMainWindow
     {
         LevelSize_8x8 = 0,
         LevelSize_16x8 = 1,
-        LevelSize_16x16 = 2
+        LevelSize_16x16 = 2,
+        LevelSize_16x32 = 3
     };
 
     struct Level
@@ -72,6 +73,8 @@ private:
     void UpdateLevel();
 
     void ConvertAllTextures();
+    void ExportLevels(const char* file_name);
+    void ConvertObjects(std::stringstream& stream, QString file_name, const char* name);
     void ConvertTextures(std::stringstream& stream, QString file_name, const char* name);
     void ConvertSpriteSet(std::stringstream& stream, QString file_name, const char* name, int sprite_width, int sprite_height);
     void ConvertSprite(std::stringstream& stream, QString file_name, const char* name);

@@ -29,7 +29,7 @@ void Render::World2Local(int16_t x, int16_t y, int16_t* x_out, int16_t* y_out)
   //*y_out = (int16_t)((s_world2local_sin * x_local) >> 8) + (int16_t)((s_world2local_cos * y_local) >> 8);
 }
 
-void RenderWallSegment(int16_t x1, int16_t w1, int16_t x2, int16_t w2)
+void Render::RenderWallSegment(int16_t x1, int16_t w1, int16_t x2, int16_t w2)
 {
   if (x1 < 0)
   {
@@ -203,7 +203,7 @@ void RenderWallSegment(int16_t x1, int16_t w1, int16_t x2, int16_t w2)
   }
 }
 
-void RenderWall(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
+void Render::RenderWall(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
 {
   int16_t x0_view, y0_view;
   World2Local(x0, y0, &x0_view, &y0_view);
@@ -262,37 +262,40 @@ void RenderWall(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
   //RenderWallSegment(sx1, w1, sx2, w2);
 }
 
-void RenderCell(int8_t x, int8_t y, uint8_t flags)
+void Render::RenderCellFull(int8_t x, int8_t y)
 {
   int16_t xc = (int16_t)x * 256;
   int16_t yc = (int16_t)y * 256;
 
+  uint16_t index = x+y*MAP_WIDTH;
   if ( (uint8_t)(s_render_cell & CELL_FLAG_DOOR) != 0)
   {
     if ((uint8_t)(s_render_cell & CELL_FLAG_HORIZONTAL) != 0)
     {
       //Bottom side
-      if (Player::y < yc && (uint8_t)(flags & CELL_SIDE_MASK_BOTTOM))
+      if (Player::y < yc)
       {
         s_render_side = CELL_SIDE_MASK_BOTTOM;
         RenderWall(xc, yc+128, xc+256, yc+128);
       }
+      
       //Top side
-      if (Player::y > yc && (uint8_t)(flags & CELL_SIDE_MASK_TOP))
+      if (Player::y > yc)
       {
         s_render_side = CELL_SIDE_MASK_TOP;
-        RenderWall(xc+256, yc+128, xc, yc+128);
-    }
+        RenderWall(xc+256, yc+128, xc, yc+128); 
+      }
     } else
     {
       //Left side
-      if (Player::x < xc && (uint8_t)(flags & CELL_SIDE_MASK_LEFT))
+      if (Player::x < xc)
       {
         s_render_side = CELL_SIDE_MASK_LEFT;
         RenderWall(xc+128, yc+256, xc+128, yc);
       }
+      
       //Right side
-      if (Player::x > xc && (uint8_t)(flags & CELL_SIDE_MASK_RIGHT))
+      if (Player::x > xc)
       {
         s_render_side = CELL_SIDE_MASK_RIGHT;
         RenderWall(xc+128, yc, xc+128, yc+256);
@@ -301,67 +304,32 @@ void RenderCell(int8_t x, int8_t y, uint8_t flags)
   } else
   {
     //Left side
-    if (Player::x < xc && (uint8_t)(flags & CELL_SIDE_MASK_LEFT))
+    if (Player::x < xc && x > 0 && (uint8_t)(Map::m_cell[index-1] >> 7) == 1)
     {
       s_render_side = CELL_SIDE_MASK_LEFT;
       RenderWall(xc, yc+256, xc, yc);
     }
-  
+    
     //Right side
-    if (Player::x > xc && (uint8_t)(flags & CELL_SIDE_MASK_RIGHT))
+    if (Player::x > xc && x < MAP_WIDTH-1 && (uint8_t)(Map::m_cell[index+1] >> 7) == 1)
     {
       s_render_side = CELL_SIDE_MASK_RIGHT;
       RenderWall(xc+256, yc, xc+256, yc+256);
     }
-  
+    
     //Bottom side
-    if (Player::y < yc && (uint8_t)(flags & CELL_SIDE_MASK_BOTTOM))
+    if (Player::y < yc && y > 0 && (uint8_t)(Map::m_cell[index-MAP_WIDTH] >> 7) == 1)
     {
       s_render_side = CELL_SIDE_MASK_BOTTOM;
       RenderWall(xc, yc, xc+256, yc);
     }
-  
+    
     //Top side
-    if (Player::y > yc && (uint8_t)(flags & CELL_SIDE_MASK_TOP))
+    if (Player::y > yc && y < MAP_HEIGHT-1 && (uint8_t)(Map::m_cell[index+MAP_WIDTH] >> 7) == 1)
     {
       s_render_side = CELL_SIDE_MASK_TOP;
       RenderWall(xc+256, yc+256, xc, yc+256); 
     }
-  }
-}
-
-void RenderCellFull(int8_t x, int8_t y)
-{
-  int16_t xc = (int16_t)x * 256;
-  int16_t yc = (int16_t)y * 256;
-
-  uint16_t index = x+y*MAP_WIDTH;
-  //Left side
-  if (Player::x < xc && x > 0 && Map::m_cell[index-1] == CELL_EMPTY)
-  {
-    s_render_side = CELL_SIDE_MASK_LEFT;
-    RenderWall(xc, yc+256, xc, yc);
-  }
-  
-  //Right side
-  if (Player::x > xc && x < MAP_WIDTH-1 && Map::m_cell[index+1] == CELL_EMPTY)
-  {
-    s_render_side = CELL_SIDE_MASK_RIGHT;
-    RenderWall(xc+256, yc, xc+256, yc+256);
-  }
-  
-  //Bottom side
-  if (Player::y < yc && y > 0 && Map::m_cell[index-MAP_WIDTH] == CELL_EMPTY)
-  {
-    s_render_side = CELL_SIDE_MASK_BOTTOM;
-    RenderWall(xc, yc, xc+256, yc);
-  }
-  
-  //Top side
-  if (Player::y > yc && y < MAP_HEIGHT-1 && Map::m_cell[index+MAP_WIDTH] == CELL_EMPTY)
-  {
-    s_render_side = CELL_SIDE_MASK_TOP;
-    RenderWall(xc+256, yc+256, xc, yc+256); 
   }
 }
 

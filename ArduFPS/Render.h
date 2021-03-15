@@ -9,6 +9,11 @@ namespace ArduFPS
 
 class Render
 {
+private:
+  static void RenderCellFull(int8_t x, int8_t y);
+  static void RenderWall(int16_t x0, int16_t y0, int16_t x1, int16_t y1);
+  static void RenderWallSegment(int16_t x1, int16_t w1, int16_t x2, int16_t w2);
+
 public:
   static uint8_t z_buffer[WIDTH];
   static int16_t s_world2local_cos;

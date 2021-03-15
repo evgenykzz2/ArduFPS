@@ -9,6 +9,7 @@ namespace ArduFPS
 {
   extern const uint16_t g_texture[];
   extern const uint8_t g_weapon_sprites[];
+  extern const uint16_t g_objects[];
 }
 
 #endif

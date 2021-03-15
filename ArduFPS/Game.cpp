@@ -2,6 +2,7 @@
 #include "Player.h"
 #include "Map.h"
 #include "Render.h"
+#include "Levels.h"
 #include "Tables.h"
 #include "Textures.h"
 #include "defines.h"
@@ -19,7 +20,8 @@ void Game::StartLevel()
   Player::y = 1*256 + 128;
   Player::angle = 0;
 
-  Map::BuildMap(9, 9);
+  //Map::BuildMap(9, 9);
+  Level::Load(0);
 }
 
 void Game::Control()
@@ -29,11 +31,13 @@ void Game::Control()
   Map::Control();
 }
 
+static const uint8_t animation[4] = {8, 9, 8, 10};
 void Game::Draw()
 {
   Render::Prepare();
   Render::RenderMap();
-  //Render::RenderSprite(1*256+128, 2*256+128, 32, 0);
+  
+  //Render::RenderSprite(1*256+128, 2*256+128, 64, animation[ (arduboy.frameCount >> 2) & 3 ]);
 
   //Sprites::drawPlusMask(64-12, 64-18, g_weapon_sprites, 0);
 }
