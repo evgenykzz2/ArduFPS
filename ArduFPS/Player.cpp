@@ -15,19 +15,19 @@ void Player::TeleportToMapStart()
   x = Map::m_cell_start_x * 256 + 128;
   y = Map::m_cell_start_y * 256 + 128;
   uint16_t index = Map::m_cell_start_x + Map::m_cell_start_y*MAP_WIDTH;
-  if ( (uint8_t)(Map::m_cell[index+1] & CELL_WALKABLE_FLAG) != 0 )
+  if ( Map::m_cell[index+1] < CELL_DOOR_LIMIT )
   {
     x -= 64;
     angle = 0;
-  } else if ( (uint8_t)(Map::m_cell[index-1] & CELL_WALKABLE_FLAG) != 0 )
+  } else if ( Map::m_cell[index-1] < CELL_DOOR_LIMIT )
   {
     x += 64;
     angle = 180;
-  }else if ( (uint8_t)(Map::m_cell[index+MAP_WIDTH] & CELL_WALKABLE_FLAG) != 0 )
+  }else if ( Map::m_cell[index+MAP_WIDTH] < CELL_DOOR_LIMIT )
   {
     y -= 64;
     angle = 90;
-  } else if ( (uint8_t)(Map::m_cell[index-MAP_WIDTH] & CELL_WALKABLE_FLAG) != 0 )
+  } else if ( Map::m_cell[index-MAP_WIDTH] < CELL_DOOR_LIMIT )
   {
     y += 64;
     angle = 270;
@@ -36,9 +36,9 @@ void Player::TeleportToMapStart()
 
 bool Player::CollideCell(uint8_t cell_x, uint8_t cell_y, uint8_t id)
 {
-  if (id == CELL_EMPTY)
+  if (id == CELL_EMPTY || id >= CELL_OBJECT_BASE)
     return false;
-  else if ( (uint8_t)(id & CELL_FLAG_DOOR) == CELL_FLAG_DOOR )
+  else if ( id < CELL_DOOR_LIMIT )
   {
     if (Map::m_current_door_cell_x == 0 || cell_x != Map::m_current_door_cell_x || cell_y != Map::m_current_door_cell_y)
     {

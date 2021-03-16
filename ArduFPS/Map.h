@@ -11,11 +11,9 @@ namespace ArduFPS
 #define CELL_SIDE_MASK_BOTTOM 0x40
 #define CELL_SIDE_MASK_TOP    0x80
 
-#define CELL_WALKABLE_FLAG    0x80
-#define CELL_EMPTY            0xFF
-#define CELL_MASK_TEXTURE     0x3F
-#define CELL_FLAG_DOOR        0x80
-#define CELL_FLAG_HORIZONTAL  0x40
+#define CELL_EMPTY            0x00
+#define CELL_DOOR_LIMIT       0x10
+#define CELL_OBJECT_BASE      0xE0
 
 class Map
 {

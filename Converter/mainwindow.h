@@ -46,6 +46,7 @@ class MainWindow : public QMainWindow
     std::map<int, TileSet> m_tileset_map;
     std::map<int, Level> m_level_map;
     std::map<int, QImage> m_texture_tiles;
+    std::map<int, QImage> m_object_tiles;
     int m_current_tile;
 
     int Size2Width(ELevelSize size);
@@ -61,6 +62,8 @@ private slots:
     void on_btn_save_clicked();
 
     void on_combo_level_size_currentIndexChanged(int index);
+
+    void on_btn_export_clicked();
 
 private:
     Ui::MainWindow *ui;

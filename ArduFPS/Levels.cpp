@@ -2,8 +2,6 @@
 #include "Map.h"
 #include <avr/pgmspace.h>
 
-#define ID_DOOR_A 13
-#define ID_DOOR_B 14
 #define ID_START  16
 #define ID_FINISH 17
 
@@ -55,18 +53,15 @@ void Level::Load(uint8_t level)
         uint8_t t = (bit_buffer >> bit_pos) & 1;
         bit_pos ++;
         if (t == 0)
-          Map::m_cell[index] = CELL_EMPTY;
+          Map::m_cell[index] = pgm_read_byte(s_tile_set + tileset_offset + 0);
         else
-          Map::m_cell[index] = pgm_read_byte(s_tile_set + tileset_offset);
+          Map::m_cell[index] = pgm_read_byte(s_tile_set + tileset_offset + 1);
       } else
       {
         uint8_t t = (bit_buffer >> bit_pos) & 31;
         bit_pos += 5;
         Map::m_cell[index] = pgm_read_byte(s_tile_set + tileset_offset + t);
-        if (t == ID_DOOR_A || t == ID_DOOR_B)
-        {
-          Map::m_cell[index] |= CELL_FLAG_DOOR;
-        } else if (t == ID_START)
+        if (t == ID_START)
         {
           Map::m_cell[index] = CELL_EMPTY;
           Map::m_cell_start_x = x;
@@ -88,19 +83,19 @@ void Level::Load(uint8_t level)
     }
   }
 
-  for (uint8_t y = 0; y < Map::m_map_height; ++y)
+  /*for (uint8_t y = 0; y < Map::m_map_height; ++y)
   {
     for (uint8_t x = 0; x < Map::m_map_width; ++x)
     {
       uint16_t index = (uint16_t)x + (uint16_t)y*MAP_WIDTH;
-      if ( (uint8_t)(Map::m_cell[index] & CELL_FLAG_DOOR) == CELL_FLAG_DOOR )
+      if ( Map::m_cell[index] < CELL_DOOR_LIMIT && Map::m_cell[index] != CELL_EMPTY )
       {
         //Check Door Orientation
         if (Map::m_cell[index+1] != CELL_EMPTY)
           Map::m_cell[index] |= CELL_FLAG_HORIZONTAL;
       }
     }
-  }
+  }*/
   Map::DoorReset();
 }
 

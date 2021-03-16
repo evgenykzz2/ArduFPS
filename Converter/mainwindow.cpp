@@ -23,6 +23,12 @@ static const QColor s_item_color[32] =
     QColor(64, 129, 192), QColor(129, 192, 64), QColor(64, 64, 64), QColor(64, 64, 64), QColor(64, 64, 64), QColor(64, 64, 64), QColor(64, 64, 64), QColor(64, 64, 64), QColor(64, 64, 64), QColor(64, 64, 64), QColor(64, 64, 64), QColor(64, 64, 64), QColor(64, 64, 64), QColor(64, 64, 64), QColor(64, 64, 64), QColor(64, 64, 64)
 };
 
+static const int s_object_sprite[16] =
+{
+//  pistole
+    0, 1, 2, 3, 6, 7, 14, 15,   8, 8, 8, 8, 8, 8, 8, 8
+};
+
 //encoding
 //00 -> empty [15]
 //01 -> base  [0]
@@ -40,8 +46,6 @@ MainWindow::MainWindow(QWidget *parent) :
     LoadTextures();
     LoadJson();
 
-    ConvertAllTextures();
-
     ui->combo_level_size->addItem("8x8", QVariant((int)LevelSize_8x8));
     ui->combo_level_size->addItem("16x8", QVariant((int)LevelSize_16x8));
     ui->combo_level_size->addItem("16x16", QVariant((int)LevelSize_16x16));
@@ -54,7 +58,6 @@ MainWindow::MainWindow(QWidget *parent) :
     {
         TileSet tileset;
         tileset.tiles.resize(32, 0);
-        tileset.tiles[15] = 0xff;
         m_tileset_map.insert(std::make_pair(0, tileset));
         ui->combo_tileset->addItem("0", QVariant((int)0));
     }
@@ -66,12 +69,11 @@ MainWindow::MainWindow(QWidget *parent) :
         level.tileset_index = 0;
         level.level_size = LevelSize_8x8;
         level.level_type = LevelType_custom;
-        level.cell.resize(MAP_WIDTH*MAP_HEIGHT, 15);
+        level.cell.resize(MAP_WIDTH*MAP_HEIGHT, 0);
         m_level_map.insert(std::make_pair(0, level));
         ui->combo_level->addItem("0", QVariant((int)0));
     }
 
-    ExportLevels("../ArduFPS/LevelData.cpp");
     UpdateTileset();
     UpdateLevel();
     ui->label_tileset->installEventFilter(this);
@@ -141,7 +143,7 @@ bool MainWindow::eventFilter( QObject* object, QEvent* event )
         {
             int tile_x = mouse_event->x() / (16*4);
             int tile_y = mouse_event->y() / (16*4);
-            if (m_current_tile != 15)
+            //if (m_current_tile != 15)
             {
                 int current_index = ui->combo_tileset->itemData( ui->combo_tileset->currentIndex() ).toInt();
                 auto tileset_itt = m_tileset_map.find(current_index);
@@ -222,11 +224,11 @@ void MainWindow::ExportLevels(const char* file_name)
                 {
                     int index = x + y * MAP_WIDTH;
                     int cell = itt->second.cell[index];
-                    if (cell == 15)
+                    if (cell == 0)
                     {
                         bit_buffer |= (0) << bit_pos;
                         bit_pos += 2;
-                    } else if (cell == 0)
+                    } else if (cell == 1)
                     {
                         bit_buffer |= (2) << bit_pos;
                         bit_pos += 2;
@@ -552,6 +554,31 @@ void MainWindow::LoadTextures()
         }
     }
     ui->label_full_tile_set->setPixmap(QPixmap::fromImage(img));
+
+    {
+        QImage img;
+        if (!img.load("../assets/objects.png"))
+        {
+            QMessageBox::critical(this, "Converter", "Can't load assets");
+            return;
+        }
+        img = img.convertToFormat(QImage::Format_ARGB32);
+
+        int cell_width = img.width() / 16;
+        int cell_height = img.height() / 16;
+
+        int index = 0;
+        for (int yi = 0; yi < cell_height; ++yi)
+        {
+            for (int xi = 0; xi < cell_width; ++xi)
+            {
+                QRect rect(xi*16, yi*16, 16, 16);
+                QImage cropped = img.copy(rect);
+                m_object_tiles.insert(std::make_pair(index, cropped));
+                index ++;
+            }
+        }
+    }
 }
 
 void MainWindow::LoadJson()
@@ -671,25 +698,41 @@ void MainWindow::UpdateTileset()
             for (int x = 0; x < 16; ++x)
             {
                 int index = x + y*16;
-                int tile_index = tileset_itt->second.tiles[index];
-                auto itt = m_texture_tiles.find(tile_index);
-                if (itt == m_texture_tiles.end() ||
-                    index == 15 || index == 16 || index == 17)
+                if (index <= 17)
                 {
-                    painter.setPen(s_item_color[index]);
-                    painter.setBrush(s_item_color[index]);
-                    painter.drawRect(x*16*4, y*16*4, 16*4-1, 16*4-1);
+                    int tile_index = tileset_itt->second.tiles[index];
+                    auto itt = m_texture_tiles.find(tile_index);
+                    if (itt == m_texture_tiles.end() || index == 16 || index == 17)
+                    {
+                        painter.setPen(s_item_color[index]);
+                        painter.setBrush(s_item_color[index]);
+                        painter.drawRect(x*16*4, y*16*4, 16*4-1, 16*4-1);
+                    } else
+                    {
+                        QImage img = itt->second.scaled(itt->second.width()*4, itt->second.height()*4);
+                        painter.drawImage(x*16*4, y*16*4, img);
+                    }
                 } else
                 {
-                    QImage img = itt->second.scaled(itt->second.width()*4, itt->second.height()*4);
-                    painter.drawImage(x*16*4, y*16*4, img);
+                    int tile_index = s_object_sprite[index-18];
+                    auto itt = m_object_tiles.find(tile_index);
+                    if (itt == m_object_tiles.end())
+                    {
+                        painter.setPen(s_item_color[index]);
+                        painter.setBrush(s_item_color[index]);
+                        painter.drawRect(x*16*4, y*16*4, 16*4-1, 16*4-1);
+                    } else
+                    {
+                        QImage img = itt->second.scaled(itt->second.width()*4, itt->second.height()*4);
+                        painter.drawImage(x*16*4, y*16*4, img);
+                    }
                 }
                 //if (i == 0)
                 {
-                    if (index == 15)
-                        DrawTextBorder(painter, x*16*4+2, y*16*4 + 42, "EMPTY");
-                    if (index == 14 || index == 13)
-                        DrawTextBorder(painter, x*16*4+8, y*16*4 + 42, "DOOR");
+                    if (index == 0)
+                        DrawTextBorder(painter, x*16*4+4, y*16*4 + 42, "EMPTY");
+                    if (index == 1)
+                        DrawTextBorder(painter, x*16*4+10, y*16*4 + 42, "BASE");
                     if (index == 16)
                         DrawTextBorder(painter, x*16*4+4, y*16*4 + 42, "START");
                     if (index == 17)
@@ -742,21 +785,33 @@ void MainWindow::UpdateLevel()
             for (int x = 0; x < w; ++x)
             {
                 int cell = level_itt->second.cell[x+y*MAP_WIDTH];
-                if (cell != 15 && cell != 16 && cell != 17)
+                if (cell <= 17)
                 {
-                    int tile_index = tileset_itt->second.tiles[cell];
-                    auto itt = m_texture_tiles.find(tile_index);
-                    if (itt != m_texture_tiles.end())
+                    if (cell != 16 && cell != 17)
+                    {
+                        int tile_index = tileset_itt->second.tiles[cell];
+                        auto itt = m_texture_tiles.find(tile_index);
+                        if (itt != m_texture_tiles.end())
+                        {
+                            QImage img = itt->second.scaled(itt->second.width()*s_map_scale, itt->second.height()*s_map_scale);
+                            painter.drawImage(x*16*s_map_scale, y*16*s_map_scale, img);
+                        }
+                    }
+                    if (cell == 16 || cell == 17)
+                    {
+                        painter.setPen(s_item_color[cell]);
+                        painter.setBrush(s_item_color[cell]);
+                        painter.drawRect(x*16*s_map_scale, y*16*s_map_scale, 16*s_map_scale-1, 16*s_map_scale-1);
+                    }
+                } else
+                {
+                    int tile_index = s_object_sprite[cell-18];
+                    auto itt = m_object_tiles.find(tile_index);
+                    if (itt != m_object_tiles.end())
                     {
                         QImage img = itt->second.scaled(itt->second.width()*s_map_scale, itt->second.height()*s_map_scale);
                         painter.drawImage(x*16*s_map_scale, y*16*s_map_scale, img);
                     }
-                }
-                if (cell == 16 || cell == 17)
-                {
-                    painter.setPen(s_item_color[cell]);
-                    painter.setBrush(s_item_color[cell]);
-                    painter.drawRect(x*16*s_map_scale, y*16*s_map_scale, 16*s_map_scale-1, 16*s_map_scale-1);
                 }
                 painter.setPen(s_color_unselect);
                 painter.setBrush(Qt::NoBrush);
@@ -781,4 +836,10 @@ void MainWindow::on_combo_level_size_currentIndexChanged(int)
         return;
     level_itt->second.level_size = (ELevelSize)ui->combo_level_size->itemData(ui->combo_level_size->currentIndex()).toInt();
     UpdateLevel();
+}
+
+void MainWindow::on_btn_export_clicked()
+{
+    ExportLevels("../ArduFPS/LevelData.cpp");
+    ConvertAllTextures();
 }
