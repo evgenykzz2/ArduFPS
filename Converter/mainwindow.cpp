@@ -15,7 +15,7 @@
 static const QColor s_color_select(0, 255, 0);
 static const QColor s_color_unselect(0, 0, 192);
 static const QColor s_color_empty(64, 64, 64);
-static const int s_map_scale = 1;
+static int s_map_scale = 1;
 
 static const QColor s_item_color[32] =
 {
@@ -196,7 +196,7 @@ void MainWindow::ExportLevels(const char* file_name)
     for (auto itt = m_tileset_map.begin(); itt != m_tileset_map.end(); ++itt)
     {
         stream_cpp << "  ";
-        for (int i = 0; i < 32; ++i)
+        for (int i = 0; i < 16; ++i)
             stream_cpp << "0x" << std::hex << itt->second.tiles[i] << ",";
         stream_cpp << std::endl;
     }
@@ -775,6 +775,13 @@ void MainWindow::UpdateLevel()
     //Draw level
     int w = Size2Width(level_itt->second.level_size);
     int h = Size2Height(level_itt->second.level_size);
+
+    if (level_itt->second.level_size == LevelSize_8x8 || level_itt->second.level_size == LevelSize_16x8)
+        s_map_scale = 3;
+    else if (level_itt->second.level_size == LevelSize_16x16)
+        s_map_scale = 2;
+    else
+        s_map_scale = 1;
 
     QImage image(w*16*s_map_scale, h*16*s_map_scale, QImage::Format_ARGB32);
     image.fill(s_color_empty);

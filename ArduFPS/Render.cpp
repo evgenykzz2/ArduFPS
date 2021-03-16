@@ -313,28 +313,32 @@ void Render::RenderCellFull(int8_t x, int8_t y)
   } else
   {
     //Left side
-    if (Player::x < xc && x > 0 && Map::m_cell[index-1] < CELL_DOOR_LIMIT)
+    if (Player::x < xc && x > 0 &&
+      (Map::m_cell[index-1] < CELL_DOOR_LIMIT || Map::m_cell[index-1] >= CELL_OBJECT_BASE))
     {
       s_render_side = CELL_SIDE_MASK_LEFT;
       RenderWall(xc, yc+256, xc, yc);
     }
     
     //Right side
-    if (Player::x > xc && x < MAP_WIDTH-1 && Map::m_cell[index+1] < CELL_DOOR_LIMIT)
+    if (Player::x > xc && x < MAP_WIDTH-1 &&
+      (Map::m_cell[index+1] < CELL_DOOR_LIMIT || Map::m_cell[index+1] >= CELL_OBJECT_BASE))
     {
       s_render_side = CELL_SIDE_MASK_RIGHT;
       RenderWall(xc+256, yc, xc+256, yc+256);
     }
     
     //Bottom side
-    if (Player::y < yc && y > 0 && Map::m_cell[index-MAP_WIDTH] < CELL_DOOR_LIMIT)
+    if (Player::y < yc && y > 0 &&
+      (Map::m_cell[index-MAP_WIDTH] < CELL_DOOR_LIMIT || Map::m_cell[index-MAP_WIDTH] >= CELL_OBJECT_BASE))
     {
       s_render_side = CELL_SIDE_MASK_BOTTOM;
       RenderWall(xc, yc, xc+256, yc);
     }
     
     //Top side
-    if (Player::y > yc && y < MAP_HEIGHT-1 && Map::m_cell[index+MAP_WIDTH] < CELL_DOOR_LIMIT)
+    if (Player::y > yc && y < MAP_HEIGHT-1 &&
+      (Map::m_cell[index+MAP_WIDTH] < CELL_DOOR_LIMIT || Map::m_cell[index+MAP_WIDTH] >= CELL_OBJECT_BASE))
     {
       s_render_side = CELL_SIDE_MASK_TOP;
       RenderWall(xc+256, yc+256, xc, yc+256); 
@@ -461,45 +465,63 @@ void Render::RenderMap()
   //side_in_view = 0;
   if (abs(angle_cos) < abs(angle_sin))
   {
+    //Draw walls
     for (int8_t ry=y_start; ry != y_end; ry += y_add)
     {
       for (int8_t rx=x_start; rx != x_end; rx += x_add)
       {
         int16_t cell_index = ry*MAP_WIDTH + rx;
-        //uint8_t flags = Map::m_cell_flags[cell_index];
-        //if (flags == 0)
-        //  continue;
         s_render_cell = Map::m_cell[cell_index];
-        if (s_render_cell == CELL_EMPTY)
+        if (s_render_cell == CELL_EMPTY || s_render_cell >= CELL_OBJECT_BASE)
           continue;
         s_render_texture = s_render_cell;
         RenderCellFull(rx, ry);
-        //if (g_line_done == RENDER_WIDTH)
-        //  break;
       }
-      //if (g_line_done == RENDER_WIDTH)
-      //  break;
+    }
+
+    //Draw sprites
+    for (int8_t ry=y_end; ry != y_start; ry -= y_add)
+    {
+      for (int8_t rx=x_end; rx != x_start; rx -= x_add)
+      {
+        int8_t cx = rx-x_add;
+        int8_t cy = ry-y_add;
+        int16_t cell_index = cy*MAP_WIDTH + cx;
+        s_render_cell = Map::m_cell[cell_index];
+        if (s_render_cell < CELL_OBJECT_BASE)
+          continue;
+        Render::RenderSprite(cx*256+128, cy*256+128, 48, s_render_cell - CELL_OBJECT_BASE);
+      }
     }
   } else
   {
+    //Draw walls
     for (int8_t rx=x_start; rx != x_end; rx += x_add)
     {
       for (int8_t ry=y_start; ry != y_end; ry += y_add)
       {
         int16_t cell_index = ry*MAP_WIDTH + rx;
-        //uint8_t flags = Map::m_cell_flags[cell_index];
-        //if (flags == 0)
-        //  continue;
         s_render_cell = Map::m_cell[cell_index];
-        if (s_render_cell == CELL_EMPTY)
+        if (s_render_cell == CELL_EMPTY || s_render_cell >= CELL_OBJECT_BASE)
           continue;
         s_render_texture = s_render_cell;
         RenderCellFull(rx, ry);
-        //if (g_line_done == RENDER_WIDTH)
-        //  break;
       }
-      //if (g_line_done == RENDER_WIDTH)
-      //  break;
+    }
+    
+    //Draw sprites
+    for (int8_t rx=x_end; rx != x_start; rx -= x_add)
+    {
+      for (int8_t ry=y_end; ry != y_start; ry -= y_add)
+      {
+        int8_t cx = rx-x_add;
+        int8_t cy = ry-y_add;
+        int16_t cell_index = cy*MAP_WIDTH + cx;
+        s_render_cell = Map::m_cell[cell_index];
+        if (s_render_cell < CELL_OBJECT_BASE)
+          continue;
+        Render::RenderSprite(cx*256+128, cy*256+128, 48, s_render_cell - CELL_OBJECT_BASE);
+      }
     }
   }
 }

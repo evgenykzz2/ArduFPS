@@ -167,4 +167,105 @@ void Map::DoorReset()
   m_current_door_direction = 0;
 }
 
+bool Map::RayTrace(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
+{
+  int8_t x0_cell = x0 >> 8;
+  int8_t x1_cell = x1 >> 8;
+  int8_t y0_cell = y0 >> 8;
+  int8_t y1_cell = y1 >> 8;
+
+  if (x0_cell == x1_cell && y0_cell == y1_cell)
+    return true;
+  
+  int16_t dx = x1-x0;
+  int16_t dy = y1-y0;
+
+  //Trace X
+  int8_t x_start = x0 >> 8;
+  int8_t x_end = x1 >> 8;
+  if (dx < 0)
+  {
+    for (int8_t x = x_start; x > x_end; --x)
+    {
+      int16_t x_border = (int16_t)(x << 8);
+      int16_t y_border = y0 + (int32_t)(x_border - x0) * (int32_t)dy / dx;
+      int8_t y = (y_border >> 8);
+      if (y < 0 || y >= MAP_HEIGHT)
+        continue;
+      int16_t index = (x-1) + y*MAP_WIDTH;
+      if (m_cell[index] == CELL_EMPTY || m_cell[index] >= CELL_OBJECT_BASE)
+        continue;
+      if (m_cell[index] < CELL_DOOR_LIMIT &&
+          x-1 == m_current_door_cell_x &&
+          y == m_current_door_cell_y &&
+          m_current_door_progress == 256)
+            continue;
+      return false;
+    }
+  } else
+  {
+    for (int8_t x = x_start+1; x <= x_end; ++x)
+    {
+      int16_t x_border = (int16_t)(x << 8);
+      int16_t y_border = y0 + (int32_t)(x_border - x0) * (int32_t)dy / dx;
+      int8_t y = (y_border >> 8);
+      if (y < 0 || y >= MAP_HEIGHT)
+        continue;
+      int16_t index = x + y*MAP_WIDTH;
+      if (m_cell[index] == CELL_EMPTY || m_cell[index] >= CELL_OBJECT_BASE)
+        continue;
+      if (m_cell[index] < CELL_DOOR_LIMIT &&
+          x == m_current_door_cell_x &&
+          y == m_current_door_cell_y &&
+          m_current_door_progress == 256)
+            continue;
+      return false;
+    }
+  }
+
+  //Trace Y
+  int8_t y_start = y0 >> 8;
+  int8_t y_end = y1 >> 8;
+  if (dy < 0)
+  {
+    for (int8_t y = y_start; y > y_end; --y)
+    {
+      int16_t y_border = (int16_t)(y << 8);
+      int16_t x_border = x0 + (int32_t)(y_border - y0) * (int32_t)dx / dy;
+      int8_t x = (x_border >> 8);
+      if (x < 0 || x >= MAP_WIDTH)
+        continue;
+      int16_t index = x + (y-1)*MAP_WIDTH;
+      if (m_cell[index] == CELL_EMPTY || m_cell[index] >= CELL_OBJECT_BASE)
+        continue;
+      if (m_cell[index] < CELL_DOOR_LIMIT &&
+          x == m_current_door_cell_x &&
+          y-1 == m_current_door_cell_y &&
+          m_current_door_progress == 256)
+            continue;
+      return false;
+    }
+  } else
+  {
+    for (int8_t y = y_start+1; y <= y_end; ++y)
+    {
+      int16_t y_border = (int16_t)(y << 8);
+      int16_t x_border = x0 + (int32_t)(y_border - y0) * (int32_t)dx / dy;
+      int8_t x = (x_border >> 8);
+      if (x < 0 || x >= MAP_WIDTH)
+        continue;
+      int16_t index = x + y*MAP_WIDTH;
+      if (m_cell[index] == CELL_EMPTY || m_cell[index] >= CELL_OBJECT_BASE)
+        continue;
+      if (m_cell[index] < CELL_DOOR_LIMIT &&
+          x == m_current_door_cell_x &&
+          y == m_current_door_cell_y &&
+          m_current_door_progress == 256)
+            continue;
+      return false;
+    }
+  }
+  return true;
+}
+
 }

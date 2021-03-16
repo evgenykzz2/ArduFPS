@@ -9,7 +9,6 @@ ArduboyTones sound(arduboy.audio.enabled);
 Sprites sprites;
 #endif
 
-
 #ifdef ESP8266
 void Game_ArduFPS_setup()
 #else

@@ -20,7 +20,6 @@ class Map
   static void AnalizeMap();
 public:
   static uint8_t m_cell[MAP_WIDTH*MAP_HEIGHT];
-  //static uint8_t m_cell_flags[MAP_WIDTH*MAP_HEIGHT];
 
   static uint8_t m_map_width;
   static uint8_t m_map_height;
@@ -40,6 +39,8 @@ public:
   static void DoorReset();
   static void BuildMap(uint8_t w, uint8_t h);
   static void Control();
+
+  static bool RayTrace(int16_t x0, int16_t y0, int16_t x1, int16_t y1); //return true if there is no wall collision
 };
 
 }

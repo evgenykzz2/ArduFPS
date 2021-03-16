@@ -2,8 +2,9 @@
 #include "Map.h"
 #include <avr/pgmspace.h>
 
-#define ID_START  16
-#define ID_FINISH 17
+#define ID_START    16
+#define ID_FINISH   17
+#define ID_OBJECT_BEGIN  18
 
 namespace ArduFPS
 {
@@ -71,6 +72,9 @@ void Level::Load(uint8_t level)
           Map::m_cell[index] = CELL_EMPTY;
           Map::m_cell_finish_x = x;
           Map::m_cell_finish_y = y;
+        } else if (t >= ID_OBJECT_BEGIN)
+        {
+          Map::m_cell[index] = CELL_OBJECT_BASE + (t - ID_OBJECT_BEGIN);
         }
       }
       if (bit_pos >= 8)

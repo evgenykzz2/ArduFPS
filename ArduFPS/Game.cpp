@@ -37,11 +37,17 @@ void Game::Draw()
 {
   Render::Prepare();
   Render::RenderMap();
+
+  //if (Map::RayTrace(Player::x, Player::y, 3*256+128, 6*256+128))
+  if (Map::RayTrace(Player::x, Player::y, 3*256+128, 6*256+128))
+  {
+    arduboy.drawFastVLine(64, 32, 32);
+  }
   
   //Render::RenderSprite(1*256+128, 3*256+128, 48, 0);  //gun
-  Render::RenderSprite(1*256+128, 3*256+128, 40, 15);  //armor
-  Render::RenderSprite(3*256+128, 3*256+128, 48, 6);  //Health small
-  Render::RenderSprite(5*256+128, 3*256+128, 40, 7);  //Health big
+  //Render::RenderSprite(1*256+128, 3*256+128, 40, 15); //armor
+  //Render::RenderSprite(3*256+128, 3*256+128, 48, 6);  //Health small
+  //Render::RenderSprite(5*256+128, 3*256+128, 40, 7);  //Health big
 
   //Sprites::drawPlusMask(64-12, 64-18, g_weapon_sprites, 0);
 }
