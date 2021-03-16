@@ -15,6 +15,7 @@ extern ArduboyTones sound;
 #define MAP_WIDTH 16
 #define MAP_HEIGHT 32
 #define ENEMY_ACTIVE_MAX 4
+#define ENEMY_ACTIVATION_RADIUS 6
 
 #define TARGET_FRAMERATE 30
 #define RENDER_RADIUS 10

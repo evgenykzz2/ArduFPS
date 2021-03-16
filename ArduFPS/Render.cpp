@@ -4,6 +4,7 @@
 #include "Tables.h"
 #include "Textures.h"
 #include "defines.h"
+#include "Enemy.h"
 
 namespace ArduFPS
 {
@@ -459,10 +460,28 @@ void Render::RenderMap()
     }
   }*/
 
+  //Reset enemy flags
+  if (y_start == y_end)
+  {
+    for (int8_t y = y_start; y <= y_end; ++y)
+      Map::m_enemy_bit_flag[y] = 0;
+  } else
+  {
+    for (int8_t y = y_end; y <= y_start; ++y)
+      Map::m_enemy_bit_flag[y] = 0;
+  }
+
+  //Put enemy bit mark
+  uint8_t enemy_count = 0;
+  for (uint8_t i = 0; i < ENEMY_ACTIVE_MAX; ++i)
+  {
+    if ( (uint8_t)(s_enemy[i].flags & ENEMY_FLAG_ACTIVE) == 0 )
+      continue;
+    enemy_count ++;
+    Map::m_enemy_bit_flag[s_enemy[i].y >> 8] = 1 << (s_enemy[i].x >> 8);
+  }
+
   //Render from front to back
-  //cell_in_view = 0;
-  //g_line_done = 0;
-  //side_in_view = 0;
   if (abs(angle_cos) < abs(angle_sin))
   {
     //Draw walls
@@ -478,7 +497,6 @@ void Render::RenderMap()
         RenderCellFull(rx, ry);
       }
     }
-
     //Draw sprites
     for (int8_t ry=y_end; ry != y_start; ry -= y_add)
     {
@@ -488,9 +506,20 @@ void Render::RenderMap()
         int8_t cy = ry-y_add;
         int16_t cell_index = cy*MAP_WIDTH + cx;
         s_render_cell = Map::m_cell[cell_index];
-        if (s_render_cell < CELL_OBJECT_BASE)
+        if (s_render_cell > CELL_EMPTY && s_render_cell < CELL_OBJECT_BASE)
           continue;
-        Render::RenderSprite(cx*256+128, cy*256+128, 48, s_render_cell - CELL_OBJECT_BASE);
+        if ( (uint8_t)( Map::m_enemy_bit_flag[cy] >> cx) != 0)    
+        {
+          for (uint8_t i = 0; i < ENEMY_ACTIVE_MAX; ++i)
+          {
+            if ( (uint8_t)(s_enemy[i].flags & ENEMY_FLAG_ACTIVE) == 0 )
+              continue;
+            if ( (s_enemy[i].x >> 8) == cx && (s_enemy[i].y >> 8) == cy )
+              Enemy::Draw(s_enemy[i].type);
+          }
+        } 
+        if (s_render_cell >= CELL_OBJECT_BASE)
+          Render::RenderSprite(cx*256+128, cy*256+128, 48, s_render_cell - CELL_OBJECT_BASE);
       }
     }
   } else
@@ -508,7 +537,6 @@ void Render::RenderMap()
         RenderCellFull(rx, ry);
       }
     }
-    
     //Draw sprites
     for (int8_t rx=x_end; rx != x_start; rx -= x_add)
     {
@@ -518,9 +546,20 @@ void Render::RenderMap()
         int8_t cy = ry-y_add;
         int16_t cell_index = cy*MAP_WIDTH + cx;
         s_render_cell = Map::m_cell[cell_index];
-        if (s_render_cell < CELL_OBJECT_BASE)
+        if (s_render_cell > CELL_EMPTY && s_render_cell < CELL_OBJECT_BASE)
           continue;
-        Render::RenderSprite(cx*256+128, cy*256+128, 48, s_render_cell - CELL_OBJECT_BASE);
+        if ( (uint8_t)( Map::m_enemy_bit_flag[cy] >> cx) != 0)    
+        {
+          for (uint8_t i = 0; i < ENEMY_ACTIVE_MAX; ++i)
+          {
+            if ( (uint8_t)(s_enemy[i].flags & ENEMY_FLAG_ACTIVE) == 0 )
+              continue;
+            if ( (s_enemy[i].x >> 8) == cx && (s_enemy[i].y >> 8) == cy )
+              Enemy::Draw(s_enemy[i].type);
+          }
+        } 
+        if (s_render_cell >= CELL_OBJECT_BASE)
+          Render::RenderSprite(cx*256+128, cy*256+128, 48, s_render_cell - CELL_OBJECT_BASE);
       }
     }
   }

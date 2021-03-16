@@ -20,11 +20,16 @@ struct Enemy
   uint8_t data;
   uint8_t flags;
 
+  static const uint8_t s_data[];
+
   static void Clean();
   static uint8_t FindInactive();
+  static void Control();
+  static void Draw(uint8_t index);
 };
 
 extern Enemy s_enemy[ENEMY_ACTIVE_MAX];
+//extern const uint8_t s_object_data[];
 
 }
 

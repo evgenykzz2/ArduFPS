@@ -2,6 +2,7 @@
 #include "Player.h"
 #include "Map.h"
 #include "Render.h"
+#include "Enemy.h"
 #include "Levels.h"
 #include "Tables.h"
 #include "Textures.h"
@@ -30,20 +31,28 @@ void Game::Control()
   uint8_t buttons = arduboy.buttonsState();
   Player::Control(buttons);
   Map::Control();
+  Enemy::Control();
 }
 
-static const uint8_t animation[4] = {8, 9, 8, 10};
 void Game::Draw()
 {
   Render::Prepare();
   Render::RenderMap();
 
-  //if (Map::RayTrace(Player::x, Player::y, 3*256+128, 6*256+128))
-  if (Map::RayTrace(Player::x, Player::y, 3*256+128, 6*256+128))
+  /*for (uint8_t i = 0; i < ENEMY_ACTIVE_MAX; ++i)
   {
-    arduboy.drawFastVLine(64, 32, 32);
-  }
-  
+    if ( (uint8_t)(s_enemy[i].flags & ENEMY_FLAG_ACTIVE) == 0 )
+      continue;
+    arduboy.setCursor(0, 32 + i*10);
+    arduboy.print(i);
+    arduboy.print(F(" "));
+    arduboy.print(s_enemy[i].x >> 8);
+    arduboy.print(F(" "));
+    arduboy.print(s_enemy[i].y >> 8);
+  }*/
+  //if (Map::RayTrace(Player::x, Player::y, 3*256+128, 6*256+128))
+  //  arduboy.drawFastVLine(64, 32, 32);
+
   //Render::RenderSprite(1*256+128, 3*256+128, 48, 0);  //gun
   //Render::RenderSprite(1*256+128, 3*256+128, 40, 15); //armor
   //Render::RenderSprite(3*256+128, 3*256+128, 48, 6);  //Health small

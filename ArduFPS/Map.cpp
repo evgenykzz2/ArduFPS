@@ -1,5 +1,7 @@
 #include "Map.h"
 #include "Player.h"
+#include "Tables.h"
+#include "Enemy.h"
 
 namespace ArduFPS
 {
@@ -21,7 +23,7 @@ static const uint8_t s_cell_animation_transform[] PROGMEM =
 };
 
 uint8_t Map::m_cell[MAP_WIDTH*MAP_HEIGHT];
-//uint8_t Map::m_cell_flags[MAP_WIDTH*MAP_HEIGHT];
+uint16_t Map::m_enemy_bit_flag[MAP_HEIGHT];
 
 uint8_t Map::m_map_width;
 uint8_t Map::m_map_height;
@@ -99,6 +101,7 @@ void Map::AnalizeMap()
 
 void Map::Control()
 {
+  //Door control
   if (m_current_door_cell_x != 0)
   {
     //Door is open, wait X frames
@@ -140,6 +143,7 @@ void Map::Control()
     }
   }
 
+  //Cell animation
   for (uint8_t y = 0; y < m_map_height; ++y)
   {
     for (uint8_t x = 0; x < m_map_width; ++x)
@@ -153,6 +157,149 @@ void Map::Control()
       {
           if ((uint8_t)(arduboy.frameCount & mask) == 0)
             m_cell[id] = pgm_read_byte(s_cell_animation_transform+cell);
+      }
+    }
+  }
+
+  //Activate new enemy
+  ActivateNewEnemy();
+}
+
+static bool ActivateEnemyAtCell(int8_t x, int8_t y, uint8_t cell)
+{
+  uint8_t enemy_id = Enemy::FindInactive();
+  if (enemy_id == ENEMY_INVALID_ID)
+    return false;
+  Map::m_cell[x + y*MAP_WIDTH] = CELL_EMPTY;
+  
+  s_enemy[enemy_id].flags = ENEMY_FLAG_ACTIVE;
+  s_enemy[enemy_id].x = x * 256 + 128;
+  s_enemy[enemy_id].y = y * 256 + 128;
+  s_enemy[enemy_id].type = 0;
+  return true;
+}
+
+void Map::ActivateNewEnemy()
+{
+  if ( Enemy::FindInactive() == ENEMY_INVALID_ID )
+    return;
+  uint8_t cell_x_min;
+  if (Player::x < 0)
+    cell_x_min = 0;
+  else
+    cell_x_min = (uint8_t)(Player::x >> 8);
+  
+  uint8_t cell_y_min;
+  if (Player::y < 0)
+    cell_y_min = 0;
+  else
+    cell_y_min = (uint8_t)(Player::y >> 8);
+
+  int8_t cell_x_max = cell_x_min;
+  int8_t cell_y_max = cell_y_min;
+  for (int16_t a = -45; a <= 45; a += 45)
+  {
+    int16_t angle = Player::angle + a;
+    if (angle >= 360)
+      angle -= 360;
+    if (angle <= 0)
+      angle += 360;
+    int16_t x = (int16_t)pgm_read_word(g_cos + angle)*ENEMY_ACTIVATION_RADIUS + Player::x;
+    if (x <= 0)
+      cell_x_min = 0;
+    else
+    {
+      int8_t cell = x >> 8;
+      if (cell < cell_x_min)
+        cell_x_min = cell;
+      if (cell > cell_x_max)
+        cell_x_max = cell;
+    }
+    int16_t y = (int16_t)pgm_read_word(g_sin + angle)*ENEMY_ACTIVATION_RADIUS + Player::y;
+    if (y <= 0)
+      cell_y_min = 0;
+    else
+    {
+      int8_t cell = y >> 8;
+      if (cell < cell_y_min)
+        cell_y_min = cell;
+      if (cell > cell_y_max)
+        cell_y_max = cell;
+    }
+  }
+  if (cell_x_max > MAP_WIDTH-1)
+    cell_x_max = MAP_WIDTH-1;
+  if (cell_y_max > MAP_HEIGHT-1)
+    cell_y_max = MAP_HEIGHT-1;
+
+  int8_t x_start;
+  int8_t x_end;
+  int8_t x_add;
+  int16_t angle_cos = (int16_t)pgm_read_word(g_cos + Player::angle);
+  if (angle_cos >= 0)
+  {
+    x_start = cell_x_min;
+    x_end = cell_x_max+1;
+    x_add = 1;
+  } else
+  {
+    x_start = cell_x_max;
+    x_end = cell_x_min-1;
+    x_add = -1;
+  }
+
+  int8_t y_start;
+  int8_t y_end;
+  int8_t y_add;
+  int16_t angle_sin = (int16_t)pgm_read_word(g_sin + Player::angle);
+  if (angle_sin >= 0)
+  {
+    y_start = cell_y_min;
+    y_end = cell_y_max+1;
+    y_add = 1;
+  } else
+  {
+    y_start = cell_y_max;
+    y_end = cell_y_min-1;
+    y_add = -1;
+  }
+
+  //Render from front to back
+  if (abs(angle_cos) < abs(angle_sin))
+  {
+    for (int8_t ry=y_start; ry != y_end; ry += y_add)
+    {
+      for (int8_t rx=x_start; rx != x_end; rx += x_add)
+      {
+        int16_t cell_index = ry*MAP_WIDTH + rx;
+        uint8_t cell_id = Map::m_cell[cell_index];
+        if (cell_id == CELL_OBJECT_BASE + 8)
+        {
+          if (Map::RayTrace(Player::x, Player::y, rx*256+128, ry*256+128))
+          {
+            if (!ActivateEnemyAtCell(rx, ry, cell_id))
+              return;
+          }
+        }
+      }
+    }
+  } else
+  {
+    //Draw walls
+    for (int8_t rx=x_start; rx != x_end; rx += x_add)
+    {
+      for (int8_t ry=y_start; ry != y_end; ry += y_add)
+      {
+        int16_t cell_index = ry*MAP_WIDTH + rx;
+        uint8_t cell_id = Map::m_cell[cell_index];
+        if (cell_id == CELL_OBJECT_BASE + 8)
+        {
+          if (Map::RayTrace(Player::x, Player::y, rx*256+128, ry*256+128))
+          {
+            if (!ActivateEnemyAtCell(rx, ry, cell_id))
+              return;
+          }
+        }
       }
     }
   }
