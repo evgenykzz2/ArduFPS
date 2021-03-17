@@ -48,11 +48,10 @@ void Render::RenderWallSegmentTextured(int16_t x1, int16_t w1, int16_t u1, int16
     du = u1 - u2;
     ustep = -1;
   }
-
-  for (int16_t x = x1; x < WIDTH; x++)
+  if (x2 >= RENDER_WIDTH)
+    x2 = RENDER_WIDTH-1;
+  for (int16_t x = x1; x < x2; x++)
   {
-    if (x >= x2)
-      break;
     if (Render::z_buffer[x] == 0)
     {
       /////////////////////////////    NEW line, no need to draw black pixels

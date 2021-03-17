@@ -81,6 +81,7 @@ private:
     void ConvertTextures(std::stringstream& stream, QString file_name, const char* name);
     void ConvertSpriteSet(std::stringstream& stream, QString file_name, const char* name, int sprite_width, int sprite_height);
     void ConvertSprite(std::stringstream& stream, QString file_name, const char* name);
+    void ConvertMiniFont(std::stringstream& stream, QString file_name, const char* name);
 };
 
 #endif // MAINWINDOW_H

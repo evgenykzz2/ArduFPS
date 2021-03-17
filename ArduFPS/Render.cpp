@@ -242,11 +242,11 @@ void Render::RenderWall(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
   int16_t vx1 = (int16_t)(((int32_t)x1_view * NEAR_PLANE) / (int32_t)y1_view);
 
   //Transform to screen pixels
-  int16_t sx1 = (int16_t)((WIDTH/2) + vx0);
-  int16_t sx2 = (int16_t)((WIDTH/2) + vx1);
+  int16_t sx1 = (int16_t)((RENDER_WIDTH/2) + vx0);
+  int16_t sx2 = (int16_t)((RENDER_WIDTH/2) + vx1);
 
   //Out of screen
-  if (sx1 >= sx2 || sx2 < 0 || sx1 >= WIDTH)
+  if (sx1 >= sx2 || sx2 < 0 || sx1 >= RENDER_WIDTH)
     return;
 
   //Calculate wall height
@@ -561,6 +561,47 @@ void Render::RenderMap()
         if (s_render_cell >= CELL_OBJECT_BASE)
           Render::RenderSprite(cx*256+128, cy*256+128, 48, s_render_cell - CELL_OBJECT_BASE);
       }
+    }
+  }
+}
+
+void Render::DrawMinifontChar(int16_t x, int16_t y, char chr)
+{
+  uint8_t width = pgm_read_byte(g_minifont_width + chr - 48);
+  uint16_t ofs = pgm_read_byte(g_minifont_offset + chr - 48);
+  for (uint8_t xi = 0; xi < width; ++xi)
+  {
+    uint8_t pixels = pgm_read_byte(g_minifont + ofs + xi);
+    for (uint8_t yi = 0; yi < 5; ++yi)
+    {
+      if ( (uint8_t)(pixels & 1) != 0 )
+      {
+        int16_t yp = y + yi;
+        uint8_t bit = 1 << (yp & 7);
+        int16_t row_offset = (yp & 0xF8) * WIDTH / 8 + x + xi;
+        //uint8_t data = sBuffer[row_offset] | bit;
+        //if (!color) data ^= bit;
+        arduboy.sBuffer[row_offset] |= bit;
+      }
+      pixels >>= 1;
+    }
+  }
+}
+
+void Render::DrawMinifontText(int16_t x, int16_t y, const char* text)
+{
+  for (uint8_t i = 0; i < 128; ++i)
+  {
+    char chr = (char)pgm_read_byte(text + i);
+    if (chr == 0)
+      return;
+    if (chr == ' ')
+    {
+      x += 3;
+    } else
+    {
+      DrawMinifontChar(x, y, chr);
+      x += pgm_read_byte(g_minifont_width + chr - 48) + 1;
     }
   }
 }

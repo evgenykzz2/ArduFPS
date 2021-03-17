@@ -20,14 +20,14 @@ void Render::RenderSprite(int16_t x, int16_t y, uint8_t scale, uint8_t sprite_in
     return;
 
   //Apply perspective projection
-  int16_t x_screen = (int16_t)(((int32_t)x_local * NEAR_PLANE) / (int32_t)y_local) + (WIDTH/2);
+  int16_t x_screen = (int16_t)(((int32_t)x_local * NEAR_PLANE) / (int32_t)y_local) + (RENDER_WIDTH/2);
   int16_t sprite_size = (int16_t)(((int32_t)scale * NEAR_PLANE) / (int32_t)y_local);
 
   int16_t x0 = x_screen - sprite_size;
   int16_t x1 = x_screen + sprite_size;
   
   //Out of screen
-  if ( x0 >= WIDTH || x1 < 0)
+  if ( x0 >= RENDER_WIDTH || x1 < 0)
     return;
 
   uint16_t texture_offset = (uint16_t)sprite_index*(16*2);
@@ -47,8 +47,8 @@ void Render::RenderSprite(int16_t x, int16_t y, uint8_t scale, uint8_t sprite_in
   int16_t uerror = dx / 2;
   int16_t u = u0;
   int16_t du = u1-u0;
-  if (x1 > WIDTH)
-    x1 = WIDTH;
+  if (x1 > RENDER_WIDTH)
+    x1 = RENDER_WIDTH;
 
   int16_t y0 = 32 + wall_height/2 - sprite_size*2;
   int16_t y1 = y0 + sprite_size*2;

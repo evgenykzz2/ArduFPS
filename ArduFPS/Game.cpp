@@ -59,6 +59,15 @@ void Game::Draw()
   //Render::RenderSprite(5*256+128, 3*256+128, 40, 7);  //Health big
 
   //Sprites::drawPlusMask(64-12, 64-18, g_weapon_sprites, 0);
+
+  static const char s_text[] PROGMEM = "123\0";
+  Render::DrawMinifontText(WIDTH-13, 3, s_text);
+  Render::DrawMinifontText(WIDTH-13, 9, s_text);
+  Render::DrawMinifontText(WIDTH-13, 15, s_text);
+  arduboy.drawFastHLine(WIDTH-14, 1, 13, WHITE);
+  arduboy.drawFastHLine(WIDTH-14, 21, 13, WHITE);
+  arduboy.drawFastVLine(WIDTH-15, 2, 19, WHITE);
+  arduboy.drawFastVLine(WIDTH-1, 2, 19, WHITE);
 }
 
 }

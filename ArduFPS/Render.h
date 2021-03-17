@@ -28,6 +28,8 @@ public:
   static void RenderSprite(int16_t x, int16_t y, uint8_t scale, uint8_t sprite_index);
   static void Prepare();
   static void RenderMap();
+  static void DrawMinifontChar(int16_t x, int16_t y, char chr);
+  static void DrawMinifontText(int16_t x, int16_t y, const char* text);
 };
 
 }

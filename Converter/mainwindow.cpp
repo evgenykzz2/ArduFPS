@@ -429,6 +429,42 @@ void MainWindow::ConvertObjects(std::stringstream& stream, QString file_name, co
     stream << std::endl <<"};" << std::endl;
 }
 
+void MainWindow::ConvertMiniFont(std::stringstream& stream, QString file_name, const char* name)
+{
+    QImage sprites;
+    if (!sprites.load(file_name))
+    {
+        QMessageBox::critical(this, "Converter", "Can't load spriteset");
+        return;
+    }
+    sprites = sprites.convertToFormat(QImage::Format_ARGB32);
+
+    stream << std::endl;
+    stream << "const uint8_t " << name << "[] PROGMEM =" << std::endl;
+    stream << "{" << std::endl;
+    int index = 0;
+    for (int x = 0; x < sprites.width(); ++x)
+    {
+        uint8_t value = 0;
+        for (int y = 0; y < 8; ++y)
+        {
+            uint32_t color = sprites.pixel(x, y);
+            uint8_t r = color & 0xFF;
+            uint8_t g = (color >> 8) & 0xFF;
+            uint8_t b = (color >> 16) & 0xFF;
+            if ( r > 200 && g > 200 && b > 200)
+                value |= 1 << y;
+        }
+        if (index % 32 == 0)
+            stream << "  ";
+        stream << "0x" << std::hex << std::setw(2) << std::setfill('0') << (((int)value)&0xFF) << ",";
+        if (index % 32 == 31)
+            stream << std::endl;
+        index ++;
+    }
+    stream << std::endl <<"};" << std::endl << std::endl;
+}
+
 void MainWindow::ConvertSprite(std::stringstream& stream, QString file_name, const char* name)
 {
     QImage sprites;
@@ -497,6 +533,16 @@ void MainWindow::ConvertSprite(std::stringstream& stream, QString file_name, con
     stream << std::endl <<"};" << std::endl;
 }
 
+static const int8_t s_minifont_width[46] =
+{
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3,   //0..9
+    3, 3, 3, 3, 3, 3, 3,            //; : <>
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, //ABCDEFGHIJKL
+    5, 4,                           //M N
+    3, 3, 4,                        //O P Q
+    3, 3, 3, 3, 3, 5, 3, 3, 3, 3, 3, 3 //RSTUVWXYZ[\]
+};
+
 void MainWindow::ConvertAllTextures()
 {
     std::stringstream stream_cpp;
@@ -509,6 +555,27 @@ void MainWindow::ConvertAllTextures()
     ConvertTextures(stream_cpp, "../assets/Textures.png", "g_texture");
     ConvertSpriteSet(stream_cpp, "../assets/Sprites.png", "g_weapon_sprites", 24, 24);
     ConvertObjects(stream_cpp, "../assets/objects.png", "g_objects");
+    ConvertMiniFont(stream_cpp, "../assets/microfont.png", "g_minifont");
+
+    {
+        stream_cpp << "const uint8_t g_minifont_width[] PROGMEM =" << std::endl;
+        stream_cpp << "{" << std::endl << "  ";
+        for (size_t i = 0; i < sizeof(s_minifont_width); ++i)
+            stream_cpp << "0x" << std::hex << (((int)s_minifont_width[i]) & 0xFF) << ",";
+        stream_cpp << std::endl << "};" << std::endl << std::endl;
+    }
+
+    {
+        stream_cpp << "const uint8_t g_minifont_offset[] PROGMEM =" << std::endl;
+        stream_cpp << "{" << std::endl << "  ";
+        int pos = 0;
+        for (size_t i = 0; i < sizeof(s_minifont_width); ++i)
+        {
+            stream_cpp << "0x" << std::hex << (pos & 0xFF) << ",";
+            pos += (int)s_minifont_width[i];
+        }
+        stream_cpp << std::endl << "};" << std::endl << std::endl;
+    }
 
     stream_cpp << "}" << std::endl;
     FILE* file = fopen("../ArduFPS/Textures.cpp", "wb");
