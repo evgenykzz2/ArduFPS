@@ -176,6 +176,7 @@ static bool ActivateEnemyAtCell(int8_t x, int8_t y, uint8_t cell)
   s_enemy[enemy_id].x = x * 256 + 128;
   s_enemy[enemy_id].y = y * 256 + 128;
   s_enemy[enemy_id].type = 0;
+  s_enemy[enemy_id].data = 0;
   return true;
 }
 
