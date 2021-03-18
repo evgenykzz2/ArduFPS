@@ -54,6 +54,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->combo_level_type->addItem("Custom", QVariant((int)LevelType_custom));
     ui->combo_level_type->addItem("Gen", QVariant((int)LevelType_gen_room));
 
+    ui->label_full_tile_set->setVisible(false);
+
     if (m_tileset_map.empty())
     {
         TileSet tileset;
@@ -686,7 +688,7 @@ void MainWindow::LoadJson()
         level.cell.resize(16*32);
         for (size_t i = 0; i < 16*32; ++i)
             level.cell[i] = (int)( list[i].get<double>() );
-        ui->combo_level->addItem(QString("%1").arg((int)m_level_map.size()));
+        ui->combo_level->addItem(QString("%1").arg((int)m_level_map.size()), QVariant((int)m_level_map.size()));
         m_level_map.insert(std::make_pair((int)m_level_map.size(), level));
     }
 }
@@ -823,16 +825,12 @@ void MainWindow::on_btn_toggle_full_tileset_clicked()
     ui->label_full_tile_set->setVisible( !ui->label_full_tile_set->isVisible() );
 }
 
-void MainWindow::UpdateLevel()
+void MainWindow::RedrawLevel()
 {
     int current_index = ui->combo_level->itemData( ui->combo_level->currentIndex() ).toInt();
     auto level_itt = m_level_map.find(current_index);
     if (level_itt == m_level_map.end())
         return;
-    ui->combo_level_size->setCurrentIndex((int)level_itt->second.level_size);
-    ui->combo_level_type->setCurrentIndex((int)level_itt->second.level_type);
-    ui->edit_level_title->setText(QString::fromStdString(level_itt->second.title));
-    ui->edit_level_title_index->setText(QString("%1").arg(level_itt->second.index));
 
     int tileset_index = ui->combo_tileset->itemData( ui->combo_tileset->currentIndex() ).toInt();
     auto tileset_itt = m_tileset_map.find(tileset_index);
@@ -897,6 +895,72 @@ void MainWindow::UpdateLevel()
     ui->label_map_view->setMinimumSize(image.width(), image.height());
 }
 
+void MainWindow::UpdateLevel()
+{
+    int current_index = ui->combo_level->itemData( ui->combo_level->currentIndex() ).toInt();
+    auto level_itt = m_level_map.find(current_index);
+    if (level_itt == m_level_map.end())
+        return;
+    ui->combo_level_size->setCurrentIndex((int)level_itt->second.level_size);
+    ui->combo_level_type->setCurrentIndex((int)level_itt->second.level_type);
+    ui->edit_level_title->setText(QString::fromStdString(level_itt->second.title));
+    ui->edit_level_title_index->setText(QString("%1").arg(level_itt->second.index));
+    RedrawLevel();
+}
+
+class Random
+{
+private:
+    uint32_t m_seed;
+
+public:
+    Random( uint32_t seed = 0 ) :
+      m_seed(seed == 0 ? (uint32_t)time(0) : seed)
+    {}
+
+    uint32_t Random::Get()
+    {
+        m_seed = ( 214013*m_seed + 2531011 );
+        return ( m_seed>>16 ) & 0x7FFF;
+    }
+};
+
+void MainWindow::GenerateRoom(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t depth)
+{
+
+}
+
+void MainWindow::GenerateLevel()
+{
+    int level_index = ui->combo_level->itemData( ui->combo_level->currentIndex() ).toInt();
+    auto level_itt = m_level_map.find(level_index);
+    if (level_itt == m_level_map.end())
+        return;
+
+    int w = Size2Width(level_itt->second.level_size);
+    int h = Size2Height(level_itt->second.level_size);
+
+    Random rand(0);
+    GenerateRoom(0, 0, , uint8_t h, 1);
+    for (int y = 0; y < h; ++y)
+    {
+        for (int x = 0; x < w; ++x)
+        {
+            int index = x + y * MAP_WIDTH;
+            level_itt->second.cell[index] = 0;
+            if (x == 0 || y == 0 || x == w-1 || y == h-1)
+                level_itt->second.cell[index] = 1;
+        }
+    }
+    uint8_t wall0_x = rand.Get()%(w/2) - (w/4) + w/2;
+
+    for (int y = 0; y < h; ++y)
+    {
+        int index = wall0_x + y * MAP_WIDTH;
+        level_itt->second.cell[index] = 1;
+    }
+}
+
 void MainWindow::on_btn_save_clicked()
 {
     SaveJson();
@@ -909,11 +973,45 @@ void MainWindow::on_combo_level_size_currentIndexChanged(int)
     if (level_itt == m_level_map.end())
         return;
     level_itt->second.level_size = (ELevelSize)ui->combo_level_size->itemData(ui->combo_level_size->currentIndex()).toInt();
-    UpdateLevel();
+    RedrawLevel();
 }
 
 void MainWindow::on_btn_export_clicked()
 {
     ExportLevels("../ArduFPS/LevelData.cpp");
     ConvertAllTextures();
+}
+
+void MainWindow::on_combo_level_type_currentIndexChanged(int)
+{
+    int current_index = ui->combo_level->itemData( ui->combo_level->currentIndex() ).toInt();
+    auto level_itt = m_level_map.find(current_index);
+    if (level_itt == m_level_map.end())
+        return;
+    level_itt->second.level_type = (ElevelType)ui->combo_level_type->itemData( ui->combo_level_type->currentIndex() ).toInt();
+    if (level_itt->second.level_type == LevelType_gen_room)
+    {
+        GenerateLevel();
+    }
+    RedrawLevel();
+}
+
+void MainWindow::on_btn_level_add_clicked()
+{
+    Level level;
+    level.index = 0;
+    level.title = "None";
+    level.tileset_index = 0;
+    level.level_size = LevelSize_8x8;
+    level.level_type = LevelType_custom;
+    level.cell.resize(MAP_WIDTH*MAP_HEIGHT, 0);
+    int index = m_level_map.rbegin()->first + 1;
+    m_level_map.insert(std::make_pair(index, level));
+    ui->combo_level->addItem(QString("%1").arg(index), QVariant((int)index));
+    ui->combo_level->setCurrentIndex(ui->combo_level->count()-1);
+}
+
+void MainWindow::on_combo_level_currentIndexChanged(int)
+{
+    UpdateLevel();
 }
