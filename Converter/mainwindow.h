@@ -75,7 +75,6 @@ private:
     void UpdateTileset();
     void RedrawLevel();
     void UpdateLevel();
-    void GenerateRoom(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t depth);
     void GenerateLevel();
 
     void ConvertAllTextures();

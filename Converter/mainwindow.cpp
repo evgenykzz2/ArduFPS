@@ -925,11 +925,6 @@ public:
     }
 };
 
-void MainWindow::GenerateRoom(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t depth)
-{
-
-}
-
 void MainWindow::GenerateLevel()
 {
     int level_index = ui->combo_level->itemData( ui->combo_level->currentIndex() ).toInt();
@@ -937,27 +932,159 @@ void MainWindow::GenerateLevel()
     if (level_itt == m_level_map.end())
         return;
 
-    int w = Size2Width(level_itt->second.level_size);
-    int h = Size2Height(level_itt->second.level_size);
+    int level_w = Size2Width(level_itt->second.level_size);
+    int level_h = Size2Height(level_itt->second.level_size);
 
     Random rand(0);
-    GenerateRoom(0, 0, , uint8_t h, 1);
-    for (int y = 0; y < h; ++y)
+    for (int y = 0; y < level_h; ++y)
     {
-        for (int x = 0; x < w; ++x)
+        for (int x = 0; x < level_w; ++x)
         {
             int index = x + y * MAP_WIDTH;
-            level_itt->second.cell[index] = 0;
-            if (x == 0 || y == 0 || x == w-1 || y == h-1)
-                level_itt->second.cell[index] = 1;
+            level_itt->second.cell[index] = 1;
         }
     }
-    uint8_t wall0_x = rand.Get()%(w/2) - (w/4) + w/2;
 
-    for (int y = 0; y < h; ++y)
+    for (uint8_t n = 0; n < 32; ++n)
     {
-        int index = wall0_x + y * MAP_WIDTH;
-        level_itt->second.cell[index] = 1;
+        int8_t x, y, w, h;
+        if (n == 0)
+        {
+            uint8_t side = rand.Get() & 3;
+            w =  (rand.Get() % 2) + 2;  //2..3
+            h =  (rand.Get() % 2) + 2;  //2..3
+            if (side == 0)
+            {
+                x = 1;
+                y = 1;
+            } else if (side == 1)
+            {
+                x = 1;
+                y = level_h - h - 1;
+            } else if (side == 2)
+            {
+                x = level_w - w - 1;
+                y = 1;
+            } else if (side == 3)
+            {
+                x = level_w - w - 1;
+                y = level_h - h - 1;
+            }
+
+            std::cerr << (int)x << " " << (int)y << " " << (int)w << " " << (int)h << std::endl;
+            for (uint8_t yi = 0; yi < h; ++yi)
+            {
+                for (uint8_t xi = 0; xi < w; ++xi)
+                {
+                    int index = x + xi + (yi + y) * MAP_WIDTH;
+                    level_itt->second.cell[index] = 16+n;
+                }
+            }
+        } else
+        {
+            bool room_success = false;
+            for (uint8_t retry = 0; retry < 128; ++retry)
+            {
+                uint8_t room_base = rand.Get() % n;
+                int8_t x0 = level_w;
+                int8_t y0 = level_h;
+                int8_t x1 = 0;
+                int8_t y1 = 0;
+                for (int8_t yi = 0; yi < level_h; ++yi)
+                {
+                    for (int8_t xi = 0; xi < level_w; ++xi)
+                    {
+                        uint8_t cell = level_itt->second.cell[(int16_t)xi + (int16_t)yi * MAP_WIDTH];
+                        if (cell != 16+room_base)
+                            continue;
+                        if (xi < x0) x0 = xi;
+                        if (xi > x1) x1 = xi;
+                        if (yi < y0) y0 = yi;
+                        if (yi > y1) y1 = yi;
+                    }
+                }
+                uint8_t side = rand.Get() & 3;
+                w =  (rand.Get() % 2) + 2;  //2..3
+                h =  (rand.Get() % 2) + 2;  //2..3
+                int8_t x_door = 0;
+                int8_t y_door = 0;
+                if (side == 0)
+                {
+                    //Left
+                    y_door = (int16_t)y0 + rand.Get() % (y1-y0);
+                    x_door = x0 - 1;
+                    x = x0 - w - 1;
+                    y = y_door - (rand.Get() % h);
+                } else if (side == 1)
+                {
+                    //Right
+                    y_door = (int16_t)y0 + rand.Get() % (y1-y0);
+                    x_door = x1 + 1;
+                    x = x1 + 2;
+                    y = y_door - (rand.Get() % h);
+                } else if (side == 2)
+                {
+                    //Top
+                    x_door = (int16_t)x0 + rand.Get() % (x1-x0);
+                    x = x_door - (rand.Get() % w);
+                    y = y0 - h - 1;
+                    y_door = y0 - 1;
+                } else if (side == 3)
+                {
+                    //Bottom
+                    x_door = (int16_t)x0 + rand.Get() % (x1-x0);
+                    x = x_door - (rand.Get() % w);
+                    y = y1 + 2;
+                    y_door = y1 + 1;
+                }
+
+                bool ok = true;
+                for (int8_t yi = -1; yi <= h; ++yi)
+                {
+                    if ((int16_t)y+yi >= level_h || (int16_t)y+yi < 0)
+                    {
+                        ok = false;
+                        break;
+                    }
+                    for (int8_t xi = -1; xi <= w; ++xi)
+                    {
+                        if ((int16_t)x+xi >= level_w || (int16_t)x+xi < 0)
+                        {
+                            ok = false;
+                            break;
+                        }
+                        int index = (int16_t)x + (int16_t)xi + (yi + y) * MAP_WIDTH;
+                        if (level_itt->second.cell[index] != 1)
+                        {
+                            ok = false;
+                            break;
+                        }
+                    }
+                }
+                if (ok)
+                {
+                    std::cerr << (int)x << " " << (int)y << " " << (int)w << " " << (int)h << " ("
+                              << (int)x0 << " " << (int)y0 << " " << (int)x1 << " " << (int)y1 << ")" << (int)room_base
+                              << std::endl;
+                    for (int8_t yi = 0; yi < h; ++yi)
+                    {
+                        for (int8_t xi = 0; xi < w; ++xi)
+                        {
+                            int index = (int16_t)x + (int16_t)xi + (int16_t)(yi + y) * MAP_WIDTH;
+                            level_itt->second.cell[index] = 16+n;
+                        }
+                    }
+                    level_itt->second.cell[x_door + y_door*MAP_WIDTH] = 0;
+                    room_success = true;
+                    break;
+                }
+            } //retry
+            if (!room_success)
+            {
+                //Complete
+                break;
+            }
+        }
     }
 }
 
