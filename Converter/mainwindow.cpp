@@ -945,6 +945,102 @@ void MainWindow::GenerateLevel()
         }
     }
 
+    //Room subdivide
+    for (uint8_t n = 0; n < 16; ++n)
+    {
+        bool room_success = false;
+        for (uint8_t retry = 0; retry < 128; ++retry)
+        {
+            int8_t x, y, w, h;
+            if (n == 0)
+            {
+                for (int8_t yi = 1; yi < level_h-1; ++yi)
+                {
+                    for (int8_t xi = 1; xi < level_w-1; ++xi)
+                    {
+                        level_itt->second.cell[(int16_t)xi + (int16_t)yi * MAP_WIDTH] = 16+n;
+                    }
+                }
+                room_success = true;
+                break;
+            } else
+            {
+                uint8_t room_base = rand.Get() % n;
+                int8_t x0 = level_w;
+                int8_t y0 = level_h;
+                int8_t x1 = 0;
+                int8_t y1 = 0;
+                for (int8_t yi = 0; yi < level_h; ++yi)
+                {
+                    for (int8_t xi = 0; xi < level_w; ++xi)
+                    {
+                        uint8_t cell = level_itt->second.cell[(int16_t)xi + (int16_t)yi * MAP_WIDTH];
+                        if (cell != 16+room_base)
+                            continue;
+                        if (xi < x0) x0 = xi;
+                        if (xi > x1) x1 = xi;
+                        if (yi < y0) y0 = yi;
+                        if (yi > y1) y1 = yi;
+                    }
+                }
+                x = x0;
+                y = y0;
+                w = x1-x0+1;
+                h = y1-y0+1;
+            }
+            uint8_t direction = rand.Get() & 1;
+            if (direction == 0)
+            {
+                //Horizontal cut
+                if (w < 5)
+                    continue;
+                int8_t cut;
+                if (w > 8)
+                    cut = 3 + (rand.Get() % (w - 6));
+                else
+                    cut = 2 + (rand.Get() % (w - 4));
+                for (int8_t yi = 0; yi < h; ++yi)
+                {
+                    for (int8_t xi = 0; xi < cut; ++xi)
+                    {
+                        level_itt->second.cell[(int16_t)xi + x + (int16_t)(yi + y) * MAP_WIDTH] = 16+n;
+                    }
+                    level_itt->second.cell[(int16_t)x + cut + (int16_t)(yi + y) * MAP_WIDTH] = 1;   //New wall
+                }
+                room_success = true;
+            } else
+            {
+                //Vertical cut
+                if (h < 5)
+                    continue;
+                int8_t cut;
+                if (h > 8)
+                    cut = 3 + (rand.Get() % (h - 6));
+                else
+                    cut = 2 + (rand.Get() % (h - 4));
+                for (int8_t xi = 0; xi < w; ++xi)
+                {
+                    for (int8_t yi = 0; yi < cut; ++yi)
+                    {
+                        level_itt->second.cell[(int16_t)xi + x + (int16_t)(yi + y) * MAP_WIDTH] = 16+n;
+                    }
+                    level_itt->second.cell[(int16_t)x + xi + (int16_t)(y + cut) * MAP_WIDTH] = 1;   //New wall
+                }
+                room_success = true;
+            }
+            if(room_success)
+                break;
+        }
+
+        if (!room_success)
+        {
+            //Complete
+            break;
+        }
+    }
+
+    /*
+    //Room generator
     for (uint8_t n = 0; n < 32; ++n)
     {
         int8_t x, y, w, h;
@@ -1085,7 +1181,7 @@ void MainWindow::GenerateLevel()
                 break;
             }
         }
-    }
+    }*/
 }
 
 void MainWindow::on_btn_save_clicked()
