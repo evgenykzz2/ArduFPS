@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include <stdint.h>
 #include <QImage>
+#include <QFile>
 #include <QPainter>
 #include <QDebug>
 #include <QMessageBox>
@@ -10,7 +11,8 @@
 #include <iomanip>
 #include "picojson.h"
 
-#define JSON_FILE_NAME "../assets/levels.json"
+#define ASSETS_FOLDER "../assets/"
+#define GAME_FOLDER "../ArduFPS/"
 
 static const QColor s_color_select(0, 255, 0);
 static const QColor s_color_unselect(0, 0, 192);
@@ -43,6 +45,7 @@ MainWindow::MainWindow(QWidget *parent) :
     m_current_tile(0)
 {
     ui->setupUi(this);
+    qDebug() << "Start";
     LoadTextures();
     LoadJson();
 
@@ -552,10 +555,10 @@ void MainWindow::ConvertAllTextures()
     stream_cpp << "namespace ArduFPS" << std::endl;
     stream_cpp << "{" << std::endl;
 
-    ConvertTextures(stream_cpp, "../assets/Textures.png", "g_texture");
-    ConvertSpriteSet(stream_cpp, "../assets/Sprites.png", "g_weapon_sprites", 24, 24);
-    ConvertObjects(stream_cpp, "../assets/objects.png", "g_objects");
-    ConvertMiniFont(stream_cpp, "../assets/microfont.png", "g_minifont");
+    ConvertTextures(stream_cpp, ASSETS_FOLDER "Textures.png", "g_texture");
+    ConvertSpriteSet(stream_cpp, ASSETS_FOLDER "Sprites.png", "g_weapon_sprites", 24, 24);
+    ConvertObjects(stream_cpp, ASSETS_FOLDER "objects.png", "g_objects");
+    ConvertMiniFont(stream_cpp, ASSETS_FOLDER "microfont.png", "g_minifont");
 
     {
         stream_cpp << "const uint8_t g_minifont_width[] PROGMEM =" << std::endl;
@@ -578,7 +581,7 @@ void MainWindow::ConvertAllTextures()
     }
 
     stream_cpp << "}" << std::endl;
-    FILE* file = fopen("../ArduFPS/Textures.cpp", "wb");
+    FILE* file = fopen(GAME_FOLDER "Textures.cpp", "wb");
     fwrite(stream_cpp.str().c_str(), 1, stream_cpp.str().length(), file);
     fclose(file);
 }
@@ -586,9 +589,10 @@ void MainWindow::ConvertAllTextures()
 void MainWindow::LoadTextures()
 {
     QImage img;
-    if (!img.load("../assets/Textures.png"))
+    if (!img.load(ASSETS_FOLDER"Textures.png"))
     {
-        QMessageBox::critical(this, "Converter", "Can't load assets");
+        qDebug() << "Can't load Textures";
+        QMessageBox::critical(0, "Converter", "Can't load assets");
         return;
     }
     img = img.convertToFormat(QImage::Format_ARGB32);
@@ -624,7 +628,7 @@ void MainWindow::LoadTextures()
 
     {
         QImage img;
-        if (!img.load("../assets/objects.png"))
+        if (!img.load(ASSETS_FOLDER"objects.png"))
         {
             QMessageBox::critical(this, "Converter", "Can't load assets");
             return;
@@ -650,9 +654,12 @@ void MainWindow::LoadTextures()
 
 void MainWindow::LoadJson()
 {
-    QFile file(JSON_FILE_NAME);
+    QFile file(ASSETS_FOLDER"levels.json");
     if (!file.open(QFile::ReadOnly))
+    {
+        QMessageBox::critical(0, "Error", "Can't load json file");
         return;
+    }
     QByteArray data = file.readAll();
     if (data.size() == 0)
         return;
@@ -725,7 +732,7 @@ void MainWindow::SaveJson()
     json.get<picojson::object>()["levels"] = picojson::value(levels_array);
 
     QString string( QString::fromStdString(json.serialize(false)) );
-    QFile file(JSON_FILE_NAME);
+    QFile file(ASSETS_FOLDER"levels.json");
     file.open(QFile::WriteOnly);
     file.write(string.toLocal8Bit().data());
     file.close();
@@ -914,6 +921,6 @@ void MainWindow::on_combo_level_size_currentIndexChanged(int)
 
 void MainWindow::on_btn_export_clicked()
 {
-    ExportLevels("../ArduFPS/LevelData.cpp");
+    ExportLevels(GAME_FOLDER"LevelData.cpp");
     ConvertAllTextures();
 }
