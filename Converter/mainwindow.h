@@ -58,12 +58,12 @@ public:
 
 private slots:
     void on_btn_toggle_full_tileset_clicked();
-
     void on_btn_save_clicked();
-
     void on_combo_level_size_currentIndexChanged(int index);
-
     void on_btn_export_clicked();
+    void on_combo_level_type_currentIndexChanged(int index);
+    void on_btn_level_add_clicked();
+    void on_combo_level_currentIndexChanged(int index);
 
 private:
     Ui::MainWindow *ui;
@@ -73,7 +73,9 @@ private:
     void LoadJson();
     void SaveJson();
     void UpdateTileset();
+    void RedrawLevel();
     void UpdateLevel();
+    void GenerateLevel();
 
     void ConvertAllTextures();
     void ExportLevels(const char* file_name);

@@ -57,6 +57,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->combo_level_type->addItem("Custom", QVariant((int)LevelType_custom));
     ui->combo_level_type->addItem("Gen", QVariant((int)LevelType_gen_room));
 
+    ui->label_full_tile_set->setVisible(false);
+
     if (m_tileset_map.empty())
     {
         TileSet tileset;
@@ -693,7 +695,7 @@ void MainWindow::LoadJson()
         level.cell.resize(16*32);
         for (size_t i = 0; i < 16*32; ++i)
             level.cell[i] = (int)( list[i].get<double>() );
-        ui->combo_level->addItem(QString("%1").arg((int)m_level_map.size()));
+        ui->combo_level->addItem(QString("%1").arg((int)m_level_map.size()), QVariant((int)m_level_map.size()));
         m_level_map.insert(std::make_pair((int)m_level_map.size(), level));
     }
 }
@@ -830,16 +832,12 @@ void MainWindow::on_btn_toggle_full_tileset_clicked()
     ui->label_full_tile_set->setVisible( !ui->label_full_tile_set->isVisible() );
 }
 
-void MainWindow::UpdateLevel()
+void MainWindow::RedrawLevel()
 {
     int current_index = ui->combo_level->itemData( ui->combo_level->currentIndex() ).toInt();
     auto level_itt = m_level_map.find(current_index);
     if (level_itt == m_level_map.end())
         return;
-    ui->combo_level_size->setCurrentIndex((int)level_itt->second.level_size);
-    ui->combo_level_type->setCurrentIndex((int)level_itt->second.level_type);
-    ui->edit_level_title->setText(QString::fromStdString(level_itt->second.title));
-    ui->edit_level_title_index->setText(QString("%1").arg(level_itt->second.index));
 
     int tileset_index = ui->combo_tileset->itemData( ui->combo_tileset->currentIndex() ).toInt();
     auto tileset_itt = m_tileset_map.find(tileset_index);
@@ -904,6 +902,295 @@ void MainWindow::UpdateLevel()
     ui->label_map_view->setMinimumSize(image.width(), image.height());
 }
 
+void MainWindow::UpdateLevel()
+{
+    int current_index = ui->combo_level->itemData( ui->combo_level->currentIndex() ).toInt();
+    auto level_itt = m_level_map.find(current_index);
+    if (level_itt == m_level_map.end())
+        return;
+    ui->combo_level_size->setCurrentIndex((int)level_itt->second.level_size);
+    ui->combo_level_type->setCurrentIndex((int)level_itt->second.level_type);
+    ui->edit_level_title->setText(QString::fromStdString(level_itt->second.title));
+    ui->edit_level_title_index->setText(QString("%1").arg(level_itt->second.index));
+    RedrawLevel();
+}
+
+class Random
+{
+private:
+    uint32_t m_seed;
+
+public:
+    Random( uint32_t seed = 0 ) :
+      m_seed(seed == 0 ? (uint32_t)time(0) : seed)
+    {}
+
+    uint32_t Random::Get()
+    {
+        m_seed = ( 214013*m_seed + 2531011 );
+        return ( m_seed>>16 ) & 0x7FFF;
+    }
+};
+
+void MainWindow::GenerateLevel()
+{
+    int level_index = ui->combo_level->itemData( ui->combo_level->currentIndex() ).toInt();
+    auto level_itt = m_level_map.find(level_index);
+    if (level_itt == m_level_map.end())
+        return;
+
+    int level_w = Size2Width(level_itt->second.level_size);
+    int level_h = Size2Height(level_itt->second.level_size);
+
+    Random rand(0);
+    for (int y = 0; y < level_h; ++y)
+    {
+        for (int x = 0; x < level_w; ++x)
+        {
+            int index = x + y * MAP_WIDTH;
+            level_itt->second.cell[index] = 1;
+        }
+    }
+
+    //Room subdivide
+    for (uint8_t n = 0; n < 16; ++n)
+    {
+        bool room_success = false;
+        for (uint8_t retry = 0; retry < 128; ++retry)
+        {
+            int8_t x, y, w, h;
+            if (n == 0)
+            {
+                for (int8_t yi = 1; yi < level_h-1; ++yi)
+                {
+                    for (int8_t xi = 1; xi < level_w-1; ++xi)
+                    {
+                        level_itt->second.cell[(int16_t)xi + (int16_t)yi * MAP_WIDTH] = 16+n;
+                    }
+                }
+                room_success = true;
+                break;
+            } else
+            {
+                uint8_t room_base = rand.Get() % n;
+                int8_t x0 = level_w;
+                int8_t y0 = level_h;
+                int8_t x1 = 0;
+                int8_t y1 = 0;
+                for (int8_t yi = 0; yi < level_h; ++yi)
+                {
+                    for (int8_t xi = 0; xi < level_w; ++xi)
+                    {
+                        uint8_t cell = level_itt->second.cell[(int16_t)xi + (int16_t)yi * MAP_WIDTH];
+                        if (cell != 16+room_base)
+                            continue;
+                        if (xi < x0) x0 = xi;
+                        if (xi > x1) x1 = xi;
+                        if (yi < y0) y0 = yi;
+                        if (yi > y1) y1 = yi;
+                    }
+                }
+                x = x0;
+                y = y0;
+                w = x1-x0+1;
+                h = y1-y0+1;
+            }
+            uint8_t direction = rand.Get() & 1;
+            if (direction == 0)
+            {
+                //Horizontal cut
+                if (w < 5)
+                    continue;
+                int8_t cut;
+                if (w > 8)
+                    cut = 3 + (rand.Get() % (w - 6));
+                else
+                    cut = 2 + (rand.Get() % (w - 4));
+                for (int8_t yi = 0; yi < h; ++yi)
+                {
+                    for (int8_t xi = 0; xi < cut; ++xi)
+                    {
+                        level_itt->second.cell[(int16_t)xi + x + (int16_t)(yi + y) * MAP_WIDTH] = 16+n;
+                    }
+                    level_itt->second.cell[(int16_t)x + cut + (int16_t)(yi + y) * MAP_WIDTH] = 1;   //New wall
+                }
+                room_success = true;
+            } else
+            {
+                //Vertical cut
+                if (h < 5)
+                    continue;
+                int8_t cut;
+                if (h > 8)
+                    cut = 3 + (rand.Get() % (h - 6));
+                else
+                    cut = 2 + (rand.Get() % (h - 4));
+                for (int8_t xi = 0; xi < w; ++xi)
+                {
+                    for (int8_t yi = 0; yi < cut; ++yi)
+                    {
+                        level_itt->second.cell[(int16_t)xi + x + (int16_t)(yi + y) * MAP_WIDTH] = 16+n;
+                    }
+                    level_itt->second.cell[(int16_t)x + xi + (int16_t)(y + cut) * MAP_WIDTH] = 1;   //New wall
+                }
+                room_success = true;
+            }
+            if(room_success)
+                break;
+        }
+
+        if (!room_success)
+        {
+            //Complete
+            break;
+        }
+    }
+
+    /*
+    //Room generator
+    for (uint8_t n = 0; n < 32; ++n)
+    {
+        int8_t x, y, w, h;
+        if (n == 0)
+        {
+            uint8_t side = rand.Get() & 3;
+            w =  (rand.Get() % 2) + 2;  //2..3
+            h =  (rand.Get() % 2) + 2;  //2..3
+            if (side == 0)
+            {
+                x = 1;
+                y = 1;
+            } else if (side == 1)
+            {
+                x = 1;
+                y = level_h - h - 1;
+            } else if (side == 2)
+            {
+                x = level_w - w - 1;
+                y = 1;
+            } else if (side == 3)
+            {
+                x = level_w - w - 1;
+                y = level_h - h - 1;
+            }
+
+            std::cerr << (int)x << " " << (int)y << " " << (int)w << " " << (int)h << std::endl;
+            for (uint8_t yi = 0; yi < h; ++yi)
+            {
+                for (uint8_t xi = 0; xi < w; ++xi)
+                {
+                    int index = x + xi + (yi + y) * MAP_WIDTH;
+                    level_itt->second.cell[index] = 16+n;
+                }
+            }
+        } else
+        {
+            bool room_success = false;
+            for (uint8_t retry = 0; retry < 128; ++retry)
+            {
+                uint8_t room_base = rand.Get() % n;
+                int8_t x0 = level_w;
+                int8_t y0 = level_h;
+                int8_t x1 = 0;
+                int8_t y1 = 0;
+                for (int8_t yi = 0; yi < level_h; ++yi)
+                {
+                    for (int8_t xi = 0; xi < level_w; ++xi)
+                    {
+                        uint8_t cell = level_itt->second.cell[(int16_t)xi + (int16_t)yi * MAP_WIDTH];
+                        if (cell != 16+room_base)
+                            continue;
+                        if (xi < x0) x0 = xi;
+                        if (xi > x1) x1 = xi;
+                        if (yi < y0) y0 = yi;
+                        if (yi > y1) y1 = yi;
+                    }
+                }
+                uint8_t side = rand.Get() & 3;
+                w =  (rand.Get() % 2) + 2;  //2..3
+                h =  (rand.Get() % 2) + 2;  //2..3
+                int8_t x_door = 0;
+                int8_t y_door = 0;
+                if (side == 0)
+                {
+                    //Left
+                    y_door = (int16_t)y0 + rand.Get() % (y1-y0);
+                    x_door = x0 - 1;
+                    x = x0 - w - 1;
+                    y = y_door - (rand.Get() % h);
+                } else if (side == 1)
+                {
+                    //Right
+                    y_door = (int16_t)y0 + rand.Get() % (y1-y0);
+                    x_door = x1 + 1;
+                    x = x1 + 2;
+                    y = y_door - (rand.Get() % h);
+                } else if (side == 2)
+                {
+                    //Top
+                    x_door = (int16_t)x0 + rand.Get() % (x1-x0);
+                    x = x_door - (rand.Get() % w);
+                    y = y0 - h - 1;
+                    y_door = y0 - 1;
+                } else if (side == 3)
+                {
+                    //Bottom
+                    x_door = (int16_t)x0 + rand.Get() % (x1-x0);
+                    x = x_door - (rand.Get() % w);
+                    y = y1 + 2;
+                    y_door = y1 + 1;
+                }
+
+                bool ok = true;
+                for (int8_t yi = -1; yi <= h; ++yi)
+                {
+                    if ((int16_t)y+yi >= level_h || (int16_t)y+yi < 0)
+                    {
+                        ok = false;
+                        break;
+                    }
+                    for (int8_t xi = -1; xi <= w; ++xi)
+                    {
+                        if ((int16_t)x+xi >= level_w || (int16_t)x+xi < 0)
+                        {
+                            ok = false;
+                            break;
+                        }
+                        int index = (int16_t)x + (int16_t)xi + (yi + y) * MAP_WIDTH;
+                        if (level_itt->second.cell[index] != 1)
+                        {
+                            ok = false;
+                            break;
+                        }
+                    }
+                }
+                if (ok)
+                {
+                    std::cerr << (int)x << " " << (int)y << " " << (int)w << " " << (int)h << " ("
+                              << (int)x0 << " " << (int)y0 << " " << (int)x1 << " " << (int)y1 << ")" << (int)room_base
+                              << std::endl;
+                    for (int8_t yi = 0; yi < h; ++yi)
+                    {
+                        for (int8_t xi = 0; xi < w; ++xi)
+                        {
+                            int index = (int16_t)x + (int16_t)xi + (int16_t)(yi + y) * MAP_WIDTH;
+                            level_itt->second.cell[index] = 16+n;
+                        }
+                    }
+                    level_itt->second.cell[x_door + y_door*MAP_WIDTH] = 0;
+                    room_success = true;
+                    break;
+                }
+            } //retry
+            if (!room_success)
+            {
+                //Complete
+                break;
+            }
+        }
+    }*/
+}
+
 void MainWindow::on_btn_save_clicked()
 {
     SaveJson();
@@ -916,11 +1203,45 @@ void MainWindow::on_combo_level_size_currentIndexChanged(int)
     if (level_itt == m_level_map.end())
         return;
     level_itt->second.level_size = (ELevelSize)ui->combo_level_size->itemData(ui->combo_level_size->currentIndex()).toInt();
-    UpdateLevel();
+    RedrawLevel();
 }
 
 void MainWindow::on_btn_export_clicked()
 {
     ExportLevels(GAME_FOLDER"LevelData.cpp");
     ConvertAllTextures();
+}
+
+void MainWindow::on_combo_level_type_currentIndexChanged(int)
+{
+    int current_index = ui->combo_level->itemData( ui->combo_level->currentIndex() ).toInt();
+    auto level_itt = m_level_map.find(current_index);
+    if (level_itt == m_level_map.end())
+        return;
+    level_itt->second.level_type = (ElevelType)ui->combo_level_type->itemData( ui->combo_level_type->currentIndex() ).toInt();
+    if (level_itt->second.level_type == LevelType_gen_room)
+    {
+        GenerateLevel();
+    }
+    RedrawLevel();
+}
+
+void MainWindow::on_btn_level_add_clicked()
+{
+    Level level;
+    level.index = 0;
+    level.title = "None";
+    level.tileset_index = 0;
+    level.level_size = LevelSize_8x8;
+    level.level_type = LevelType_custom;
+    level.cell.resize(MAP_WIDTH*MAP_HEIGHT, 0);
+    int index = m_level_map.rbegin()->first + 1;
+    m_level_map.insert(std::make_pair(index, level));
+    ui->combo_level->addItem(QString("%1").arg(index), QVariant((int)index));
+    ui->combo_level->setCurrentIndex(ui->combo_level->count()-1);
+}
+
+void MainWindow::on_combo_level_currentIndexChanged(int)
+{
+    UpdateLevel();
 }
